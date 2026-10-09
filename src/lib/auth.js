@@ -41,6 +41,26 @@ export async function restoreSession() {
   }
 }
 
+// Web only: Google refuses sign-in inside an embedded WebView, so the desktop build hides this.
+export const googleSignInAvailable = () => typeof window !== "undefined" && !window.__TAURI_INTERNALS__;
+export function loginWithGoogle() {
+  const from = window.location.origin + window.location.pathname;
+  window.location.href = `${config.base44AppBaseUrl}/api/apps/auth/login?app_id=${encodeURIComponent(config.base44AppId)}&from_url=${encodeURIComponent(from)}`;
+}
+// Picks up the token Base44 returns in the address after Google sign-in.
+export async function restoreSessionFromRedirect() {
+  try {
+    const u = new URL(window.location.href);
+    const token = u.searchParams.get("access_token") || new URLSearchParams(u.hash.replace(/^#/, "")).get("access_token");
+    if (!token) return null;
+    client().auth.setToken(token);
+    try { localStorage.setItem(TOKEN_KEY, token); } catch { /* storage unavailable */ }
+    window.history.replaceState({}, "", u.pathname);
+    const member = await client().auth.me();
+    return member ? { member } : null;
+  } catch { return null; }
+}
+
 export async function loginWithPassword(email, password) {
   const e = email.trim();
   if (!e || !password) throw new Error("Enter your Repeater Nation email and password.");
@@ -98,3 +118,28 @@ export const deleteZone = (id) => client().entities.RadioZone.delete(id);
 export const createChannel = (data) => client().entities.RadioChannel.create(data);
 export const updateChannel = (id, data) => client().entities.RadioChannel.update(id, data);
 export const deleteChannel = (id) => client().entities.RadioChannel.delete(id);
+
+// Talking on a channel uses the same radio session and floor control as the radio app.
+export const issueRadioSession = (channel, radioSessionId = "") =>
+  invoke("issue-radio-session", {
+    channel_id: channel.id,
+    zone_id: channel.zoneId || "",
+    channel_number: channel.number ?? null,
+    radio_session_id: radioSessionId,
+    session_type: "radio",
+  });
+export const radioPTT = (channel, action, radioSessionId, radioCallsign) =>
+  invoke("radio-ptt", {
+    action,
+    channel_id: channel.id,
+    zone_id: channel.zoneId || "",
+    channel_number: channel.number ?? null,
+    radio_session_id: radioSessionId || "",
+    radio_callsign: radioCallsign || "",
+  });
+
+// Dispatch-only server actions (the server refuses anyone who isn't staff).
+export const dispatchRoster = () => invoke("radio-dispatch", { action: "roster" });
+export const dispatchLocations = () => invoke("radio-dispatch", { action: "locations" });
+export const dispatchMove = (identity, fromChannelId, toChannelId) =>
+  invoke("radio-dispatch", { action: "move", identity, from_channel_id: fromChannelId, to_channel_id: toChannelId });

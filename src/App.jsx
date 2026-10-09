@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { restoreSession, loginWithPassword, clearSession, isDispatcher } from "./lib/auth";
+import { restoreSession, restoreSessionFromRedirect, loginWithPassword, loginWithGoogle, googleSignInAvailable, clearSession, isDispatcher } from "./lib/auth";
 import ChannelManager from "./components/ChannelManager";
 import Monitor from "./components/Monitor";
 import DirectCalls from "./components/DirectCalls";
+import Talk from "./components/Talk";
+import Roster from "./components/Roster";
+import MapView from "./components/MapView";
 
 function Login({ onDone }) {
   const [email, setEmail] = useState("");
@@ -22,6 +25,7 @@ function Login({ onDone }) {
       <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
       <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
       <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+      {googleSignInAvailable() && <button type="button" onClick={loginWithGoogle}>Sign in with Google</button>}
       {error && <p className="err">{error}</p>}
     </form>
   );
@@ -31,7 +35,7 @@ export default function App() {
   const [session, setSession] = useState(undefined); // undefined = restoring
   const [tab, setTab] = useState("monitor");
 
-  useEffect(() => { restoreSession().then(setSession); }, []);
+  useEffect(() => { restoreSessionFromRedirect().then((r) => r || restoreSession()).then(setSession); }, []);
 
   if (session === undefined) return <p className="center">Loading…</p>;
   if (!session) return <Login onDone={setSession} />;
@@ -52,14 +56,14 @@ export default function App() {
       <header>
         <strong>Repeater Nation Dispatch</strong>
         <nav>
-          {["monitor", "calls", "channels"].map((t) => (
+          {["monitor", "talk", "roster", "map", "calls", "channels"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
           ))}
         </nav>
         <span>{member.full_name || member.email}</span>
         <button onClick={async () => { await clearSession(); setSession(null); }}>Sign out</button>
       </header>
-      <main>{tab === "monitor" ? <Monitor /> : tab === "calls" ? <DirectCalls /> : <ChannelManager />}</main>
+      <main>{{ monitor: <Monitor />, talk: <Talk />, roster: <Roster />, map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager /> }[tab]}</main>
     </div>
   );
 }
