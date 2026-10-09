@@ -11,3 +11,6 @@ button{cursor:pointer}button:hover,button.on{background:var(--accent);color:#041
 .err{color:var(--hot)}.center{text-align:center;margin-top:20vh}
 ul{list-style:none;padding:0}li{display:flex;gap:8px;align-items:center;padding:4px 0}li span{flex:1}
 small{display:block;opacity:.7;margin-top:6px}
+.grid.wide{grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));align-items:start}
+.grid.wide .err{grid-column:1/-1}
+li{flex-wrap:wrap}li span{flex:1 1 160px}

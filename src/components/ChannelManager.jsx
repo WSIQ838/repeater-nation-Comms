@@ -35,7 +35,7 @@ export default function ChannelManager() {
   });
 
   return (
-    <div className="grid">
+    <div className="grid wide">
       {error && <p className="err">{error}</p>}
       <section className="card">
         <h2>Zones</h2>
