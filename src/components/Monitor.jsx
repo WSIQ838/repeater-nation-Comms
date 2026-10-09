@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Room, RoomEvent } from "livekit-client";
 import { listZonesAndChannels, issueMonitorSession } from "../lib/auth";
+import { applySink } from "../lib/prefs";
 
 const who = (p) => { try { const m = p?.metadata ? JSON.parse(p.metadata) : {}; return m.callsign || m.displayName || p?.name || p?.identity; } catch { return p?.name || p?.identity; } };
 
@@ -36,7 +37,7 @@ export default function Monitor() {
       room.on(RoomEvent.ParticipantDisconnected, (p) => { entry.audio.delete(p.identity); patch(c.id, (l) => ({ ...l, people: roster(room), onAir: l.onAir.filter((n) => n !== who(p)) })); });
       room.on(RoomEvent.TrackSubscribed, (track, pub, p) => {
         if (track.kind !== "audio") return;
-        const el = track.attach(); el.autoplay = true; el.style.display = "none"; document.body.appendChild(el);
+        const el = track.attach(); el.autoplay = true; el.style.display = "none"; applySink(el); document.body.appendChild(el);
         entry.audio.set(p.identity, el);
         patch(c.id, (l) => { el.volume = l.muted ? 0 : l.volume; return { ...l, onAir: [...new Set([...l.onAir, who(p)])] }; });
       });

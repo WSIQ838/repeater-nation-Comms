@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Room, RoomEvent, createLocalAudioTrack } from "livekit-client";
 import { listAllDirectCalls, directCallToken } from "../lib/auth";
+import { applySink, getMicId } from "../lib/prefs";
 
 const POLL_MS = 4000;
 const name = (c, side) => c[`${side}_callsign`] || c[`${side}_name`] || c[`${side}_display_name`] || c[`${side}_user_id`] || "Unknown";
@@ -55,7 +56,7 @@ export default function DirectCalls() {
       session.current = s;
       room.on(RoomEvent.TrackSubscribed, (track, _p, p) => {
         if (track.kind !== "audio") return;
-        const el = track.attach(); el.autoplay = true; el.style.display = "none"; document.body.appendChild(el); s.audio.set(p.identity, el);
+        const el = track.attach(); el.autoplay = true; el.style.display = "none"; applySink(el); document.body.appendChild(el); s.audio.set(p.identity, el);
       });
       room.on(RoomEvent.TrackUnsubscribed, (track, _p, p) => { track.detach().forEach((e) => e.remove()); s.audio.delete(p.identity); });
       room.on(RoomEvent.Disconnected, () => { if (session.current === s) leave(); });
@@ -70,7 +71,7 @@ export default function DirectCalls() {
     if (!s || joined?.mode !== "talk") return;
     try {
       if (on && !s.mic) {
-        s.mic = await createLocalAudioTrack();
+        s.mic = await createLocalAudioTrack(getMicId() ? { deviceId: getMicId() } : undefined);
         if (session.current !== s) { s.mic.stop(); s.mic = null; return; }
         await s.room.localParticipant.publishTrack(s.mic);
       } else if (!on && s.mic) {
