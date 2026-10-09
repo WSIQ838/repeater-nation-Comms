@@ -9,5 +9,5 @@ button{cursor:pointer}button:hover,button.on{background:var(--accent);color:#041
 .card.onair{border-color:var(--hot);box-shadow:0 0 0 1px var(--hot)}
 .login{max-width:340px;margin:12vh auto;display:flex;flex-direction:column;gap:8px}
 .err{color:var(--hot)}.center{text-align:center;margin-top:20vh}
-ul{list-style:none;padding:0}li{display:flex;gap:8px;align-items:center;padding:4px 0}li button:first-of-type{margin-left:auto}
+ul{list-style:none;padding:0}li{display:flex;gap:8px;align-items:center;padding:4px 0}li span{flex:1}
 small{display:block;opacity:.7;margin-top:6px}
