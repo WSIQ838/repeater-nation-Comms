@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { restoreSession, loginWithPassword, clearSession, isDispatcher } from "./lib/auth";
 import ChannelManager from "./components/ChannelManager";
 import Monitor from "./components/Monitor";
+import DirectCalls from "./components/DirectCalls";
 
 function Login({ onDone }) {
   const [email, setEmail] = useState("");
@@ -51,14 +52,14 @@ export default function App() {
       <header>
         <strong>Repeater Nation Dispatch</strong>
         <nav>
-          {["monitor", "channels"].map((t) => (
+          {["monitor", "calls", "channels"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
           ))}
         </nav>
         <span>{member.full_name || member.email}</span>
         <button onClick={async () => { await clearSession(); setSession(null); }}>Sign out</button>
       </header>
-      <main>{tab === "monitor" ? <Monitor /> : <ChannelManager />}</main>
+      <main>{tab === "monitor" ? <Monitor /> : tab === "calls" ? <DirectCalls /> : <ChannelManager />}</main>
     </div>
   );
 }

@@ -15,6 +15,7 @@ rules on `RadioZone`/`RadioChannel`, and checks inside any dispatch function.
 - Sign-in and dispatch-only gate
 - Create / enable / remove zones and channels
 - Monitor many channels at once (receive-only) with volume, mute, who is on air
+- Live list of member direct calls; dispatch can listen silently or join and talk (needs backend support, see `src/lib/auth.js`)
 
 ## Planned
 

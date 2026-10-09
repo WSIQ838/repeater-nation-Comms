@@ -68,6 +68,13 @@ async function invoke(name, payload) {
   }
 }
 
+// Direct calls. The radio app's "list" and "token" actions only cover a member's own calls;
+// dispatch needs the server to also accept { all: true } on "list" and
+// { mode: "listen" | "talk" } on "token" for dispatch accounts, and to grant publish rights
+// only in talk mode. Until the backend does, these calls come back refused.
+export const listAllDirectCalls = () => invoke("radio-direct-call", { action: "list", all: true });
+export const directCallToken = (callId, mode) => invoke("radio-direct-call", { action: "token", call_id: callId, mode });
+
 export const issueMonitorSession = (channel) =>
   invoke("issue-radio-session", {
     channel_id: channel.id,
