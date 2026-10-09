@@ -41,24 +41,48 @@ export async function restoreSession() {
   }
 }
 
-// Web only: Google refuses sign-in inside an embedded WebView, so the desktop build hides this.
-export const googleSignInAvailable = () => typeof window !== "undefined" && !window.__TAURI_INTERNALS__;
-export function loginWithGoogle() {
-  const from = window.location.origin + window.location.pathname;
-  window.location.href = `${config.base44AppBaseUrl}/api/apps/auth/login?app_id=${encodeURIComponent(config.base44AppId)}&from_url=${encodeURIComponent(from)}`;
+const inDesktopApp = () => typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+export const googleSignInAvailable = () => true;
+
+// Google refuses sign-in inside an embedded window, so the desktop app opens the system browser
+// and the website hands the result back through a repeaternation-dispatch:// link (its own link
+// type, so the radio app is never opened by mistake). The web build just redirects.
+export async function loginWithGoogle() {
+  const base = config.base44AppBaseUrl;
+  const login = (from) => `${base}/api/apps/auth/login?app_id=${encodeURIComponent(config.base44AppId)}&from_url=${encodeURIComponent(from)}`;
+  if (inDesktopApp()) {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(login(`${config.appUrl}/oauth/dispatch-callback`));
+    return;
+  }
+  window.location.href = login(window.location.origin + window.location.pathname);
 }
-// Picks up the token Base44 returns in the address after Google sign-in.
+
+async function sessionFromToken(token) {
+  client().auth.setToken(token);
+  try { localStorage.setItem(TOKEN_KEY, token); } catch { /* storage unavailable */ }
+  const member = await client().auth.me();
+  return member ? { member } : null;
+}
+
+// Web: picks up the token Base44 returns in the address after Google sign-in.
 export async function restoreSessionFromRedirect() {
   try {
     const u = new URL(window.location.href);
     const token = u.searchParams.get("access_token") || new URLSearchParams(u.hash.replace(/^#/, "")).get("access_token");
     if (!token) return null;
-    client().auth.setToken(token);
-    try { localStorage.setItem(TOKEN_KEY, token); } catch { /* storage unavailable */ }
     window.history.replaceState({}, "", u.pathname);
-    const member = await client().auth.me();
-    return member ? { member } : null;
+    return await sessionFromToken(token);
   } catch { return null; }
+}
+
+// Desktop: the repeaternation-dispatch://oauth/callback?access_token=... link from the browser.
+export async function restoreSessionFromLink(url) {
+  const token = new URL(url).searchParams.get("access_token");
+  if (!token) throw new Error("The sign-in link had no token. Try signing in again.");
+  const s = await sessionFromToken(token);
+  if (!s) throw new Error("Signed in, but the account could not be loaded.");
+  return s;
 }
 
 export async function loginWithPassword(email, password) {

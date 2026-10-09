@@ -12,7 +12,7 @@ rules on `RadioZone`/`RadioChannel`, and checks inside any dispatch function.
 
 ## Features
 
-- Sign-in (email/password; Google on the web build) and a dispatch-only gate
+- Sign-in with email/password or Google (the desktop app opens your browser and comes back through a `repeaternation-dispatch://` link) and a dispatch-only gate
 - **Monitor**: listen to many channels at once, volume and mute per channel
 - **Talk**: join a channel and hold to talk (same floor control as the radio); record, store and play messages onto a channel (messages are kept on the dispatcher's computer)
 - **Roster**: everyone on the radio by channel, and send any radio to another channel
