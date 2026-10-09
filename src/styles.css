@@ -33,3 +33,21 @@ li{flex-wrap:wrap}li span{flex:1 1 160px}
 .console .grid{align-items:start}
 .chip.st-available{background:#1f6b3a}.chip.st-busy{background:#8a2b2b}.chip.st-en-route{background:#8a6a1c}
 .chip.st-at-scene{background:#1f4f8a}.chip.st-returning{background:#5b3a8a}.chip.st-out-of-service{background:#444c57}
+/* Channel card: the radio's own screen */
+.chancard{padding:10px}
+.lcd{background:#f4f6f4;color:#111;border-radius:6px;overflow:hidden;border:1px solid #cfd6cf;font-family:system-ui,sans-serif}
+.lcd-top{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;font-size:13px;gap:8px}
+.lcd-left,.lcd-right{display:inline-flex;align-items:center;gap:6px}
+.lcd svg{height:13px;width:auto}.lcd .sig{width:18px}.lcd .sig rect{fill:#c3cbc3}.lcd .sig rect.on{fill:#1f9d4a}
+.lcd .spk,.lcd .ppl{color:#222;width:15px}
+.lcd .badge{font-size:11px;font-weight:700;color:#fff;padding:0 6px;border-radius:3px;background:#1f9d4a;line-height:16px}
+.lcd .badge.tx{background:#d33}
+.lcd-right b{margin-left:2px}
+.lcd-zone{text-align:center;font-weight:700;font-size:20px;line-height:1.1;margin-top:4px;padding:0 6px}
+.lcd-chan{text-align:center;font-weight:800;font-size:25px;line-height:1.15;padding:2px 6px 10px}
+.lcd-bar{color:#fff;text-align:center;padding:5px 6px;font-size:15px;line-height:1.25;min-height:46px}
+.lcd-bar.idle{background:#3a9d4f}.lcd-bar.rx{background:#1f6fb8}.lcd-bar.tx{background:#cf3b3b}
+.lcd-bar.off{background:#6b747d}.lcd-bar.wait{background:#a0791c}
+.controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.controls .volrow{flex:1}
+.chancard.keyed{border-color:#cf3b3b;box-shadow:0 0 0 1px #cf3b3b}

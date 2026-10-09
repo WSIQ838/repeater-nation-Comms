@@ -11,7 +11,7 @@ const loadOn = () => { try { return new Set(JSON.parse(localStorage.getItem(ON_K
 const saveOn = (set) => { try { localStorage.setItem(ON_KEY, JSON.stringify([...set])); } catch { /* storage unavailable */ } };
 
 // One channel: an on/off switch (listen), a volume slider, and a hold-to-talk button.
-function ChannelCard({ channel, startOn, onChange, messages }) {
+function ChannelCard({ channel, startOn, onChange, messages, now }) {
   const [on, setOn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -120,24 +120,49 @@ function ChannelCard({ channel, startOn, onChange, messages }) {
     }
   };
 
+  const clock = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  // The bottom bar says what the radio is doing, like the radio's own screen.
+  let bar = { cls: "off", top: "Off", sub: "Switch on to listen" };
+  if (busy) bar = { cls: "wait", top: "Connecting…", sub: "" };
+  else if (keyed) bar = { cls: "tx", top: "Transmitting", sub: note || "Release to stop" };
+  else if (on && onAir.length) bar = { cls: "rx", top: "Receiving", sub: onAir.join(", ") };
+  else if (on) bar = { cls: "idle", top: "Listening", sub: `${people} on channel` };
+  const bars = on ? 4 : 0;
+
   return (
-    <section className={"card" + (onAir.length ? " onair" : "") + (keyed ? " keyed" : "")}>
-      <div className="cardhead">
-        <h3>{channel.zoneName} · {channel.name}</h3>
-        <label className="switch" title={on ? "Listening: switch off" : "Switch on to listen"}>
-          <input type="checkbox" checked={on} disabled={busy} onChange={() => (on ? turnOff() : turnOn())} />
-          <span>{busy ? "…" : on ? "ON" : "OFF"}</span>
-        </label>
+    <section className={"card chancard" + (keyed ? " keyed" : "")}>
+      <div className="lcd">
+        <div className="lcd-top">
+          <span className="lcd-left">
+            <svg className="sig" viewBox="0 0 18 14" aria-hidden="true">{[0, 1, 2, 3].map((n) => <rect key={n} x={n * 4.6} y={11 - n * 3.3} width="3" height={3 + n * 3.3} className={n < bars ? "on" : ""} />)}</svg>
+            <svg className="spk" viewBox="0 0 16 14" aria-hidden="true"><path d="M1 5h3l4-3.5v11L4 9H1z" fill="currentColor" /><path d="M10.5 4.5a3.5 3.5 0 0 1 0 5M12.3 2.7a6 6 0 0 1 0 8.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+            {(onAir.length > 0 || keyed) && <span className={"badge " + (keyed ? "tx" : "rx")}>{keyed ? "TX" : "RX"}</span>}
+          </span>
+          <span className="lcd-right">
+            <svg className="ppl" viewBox="0 0 16 14" aria-hidden="true"><circle cx="8" cy="4" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M2.5 13c.4-3 2.5-4.6 5.5-4.6s5.1 1.6 5.5 4.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+            <b>{people}</b> {clock}
+          </span>
+        </div>
+        <div className="lcd-zone">Zone {channel.zoneName}</div>
+        <div className="lcd-chan">Ch {channel.number ?? ""} {channel.name}</div>
+        <div className={"lcd-bar " + bar.cls}><div>{bar.top}</div>{bar.sub && <div>{bar.sub}</div>}</div>
       </div>
       {error && <p className="err">{error}</p>}
-      {on && (
-        <>
-          <p>{keyed ? "YOU ARE TRANSMITTING" : onAir.length ? `ON AIR: ${onAir.join(", ")}` : "Idle"} <small>· {people} on channel</small></p>
-          <label className="volrow">Volume
+      <div className="controls">
+        <label className="switch" title={on ? "Listening: switch off" : "Switch on to listen"}>
+          <input type="checkbox" checked={on} disabled={busy} onChange={() => (on ? turnOff() : turnOn())} />
+          <span>{on ? "ON" : "OFF"}</span>
+        </label>
+        {on && (
+          <label className="volrow">Vol
             <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => changeVolume(Number(e.target.value))} />
           </label>
+        )}
+      </div>
+      {on && (
+        <>
           <button className={"ptt" + (keyed ? " on" : "")} onPointerDown={down} onPointerUp={release} onPointerLeave={() => (keyed || sending.current) && release()}>
-            {keyed ? "TRANSMITTING" : note || "Hold to talk"}
+            {keyed ? "TRANSMITTING" : "Hold to talk"}
           </button>
           {messages.length > 0 && (
             <select value="" disabled={keyed || sending.current} onChange={(e) => e.target.value && play(e.target.value)}>
@@ -232,6 +257,8 @@ export default function Console() {
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
   const [onSet] = useState(loadOn);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 20000); return () => clearInterval(t); }, []);
   const reload = () => listMessages().then(setMessages).catch(() => {});
 
   useEffect(() => {
@@ -253,7 +280,7 @@ export default function Console() {
       <MessagesBar messages={messages} reload={reload} />
       <div className="console">
         <div className="grid">
-          {channels.map((c) => <ChannelCard key={c.id} channel={c} startOn={onSet.has(c.id)} onChange={remember} messages={messages} />)}
+          {channels.map((c) => <ChannelCard key={c.id} channel={c} startOn={onSet.has(c.id)} onChange={remember} messages={messages} now={now} />)}
         </div>
         <RosterPanel channels={channels} />
       </div>
