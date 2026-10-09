@@ -1,20 +1,36 @@
 name: Build Repeater Nation Dispatch for Windows
 
 # Manual only: run it from the Actions tab when a build is wanted.
+# It publishes a GitHub release (dispatch-v<version>) with the installer attached.
 on:
   workflow_dispatch:
 
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm install
-      - name: Build Windows installer
-        run: npx tauri build
+      - name: Build Windows installer and publish the release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: .
+          tagName: dispatch-v__VERSION__
+          releaseName: Repeater Nation Dispatch v__VERSION__
+          releaseBody: |
+            Windows installer for the Repeater Nation Dispatch console. Download the `x64-setup.exe` (or the `.msi`) and run it.
+            Sign in with a Repeater Nation admin account.
+            Windows may show "Windows protected your PC" because the app isn't signed: click **More info**, then **Run anyway**.
+          releaseDraft: false
+          prerelease: false
+          includeDebug: false
       - uses: actions/upload-artifact@v4
         with:
           name: repeater-nation-dispatch-windows
