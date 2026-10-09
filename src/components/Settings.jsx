@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getMicId, getSpeakerId, setMicId, setSpeakerId } from "../lib/prefs";
 import { checkForUpdate, openLink } from "../lib/updates";
+import { exportAll, importAll, resetLayoutStorage } from "../lib/layout";
 
 export default function Settings({ member, onSignOut, update }) {
   const [devices, setDevices] = useState([]);
@@ -9,6 +10,8 @@ export default function Settings({ member, onSignOut, update }) {
   const [state, setState] = useState(update ? { ...update } : null);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
+  const [layoutText, setLayoutText] = useState("");
+  const [layoutMsg, setLayoutMsg] = useState("");
 
   const loadDevices = async () => {
     try {
@@ -52,6 +55,15 @@ export default function Settings({ member, onSignOut, update }) {
           </select>
         </label>
         <small>Changes apply the next time you join a channel or call.</small>
+      </section>
+      <section className="card">
+        <h2>Console layout</h2>
+        <p><small>Folders, tabs, colours, icons, alerts and tones are saved on this computer. Copy them to use the same setup elsewhere.</small></p>
+        <button onClick={() => { setLayoutText(exportAll()); setLayoutMsg("Copy this text to save your layout."); }}>Show layout to copy</button>
+        <button onClick={() => { if (!confirm("Reset folders, colours, icons, alerts and tones to the defaults?")) return; resetLayoutStorage(); window.dispatchEvent(new Event("dispatch-layout-changed")); setLayoutText(""); setLayoutMsg("Layout reset."); }}>Reset to defaults</button>
+        <textarea rows="6" placeholder="Paste a saved layout here, then press Import" value={layoutText} onChange={(e) => setLayoutText(e.target.value)} style={{ width: "100%", marginTop: 8 }} />
+        <button disabled={!layoutText.trim()} onClick={() => { try { importAll(layoutText); window.dispatchEvent(new Event("dispatch-layout-changed")); setLayoutMsg("Layout imported."); } catch (e) { setLayoutMsg(e?.message || "That text could not be read."); } }}>Import</button>
+        {layoutMsg && <small> {layoutMsg}</small>}
       </section>
       <section className="card">
         <h2>Account</h2>
