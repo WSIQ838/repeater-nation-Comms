@@ -6,7 +6,7 @@ with the same Repeater Nation account and is only shown to accounts with dispatc
 ## Access control
 
 `isDispatcher()` in `src/lib/auth.js` allows accounts whose `role` is in `VITE_DISPATCH_ROLES`
-(default `admin,dispatcher`) or that carry a `dispatch` flag. This only hides the console. The
+(default `admin,super_admin`, the roles the server allows to change channels) or that carry a `dispatch` flag. This only hides the console. The
 Repeater Nation Base44 backend must enforce the same rule on every dispatch action: entity
 rules on `RadioZone`/`RadioChannel`, and checks inside any dispatch function.
 
