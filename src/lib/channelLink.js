@@ -1,5 +1,6 @@
 import { Room, RoomEvent, createLocalAudioTrack } from "livekit-client";
 import { issueRadioSession, radioPTT } from "./auth";
+import { applySink, getMicId } from "./prefs";
 
 const RENEW_MS = 8000;
 
@@ -16,7 +17,7 @@ export class ChannelLink {
     this.audio = new Map();
     this.room.on(RoomEvent.TrackSubscribed, (track, _pub, p) => {
       if (track.kind !== "audio") return;
-      const el = track.attach(); el.autoplay = true; el.style.display = "none"; document.body.appendChild(el); this.audio.set(p.identity, el);
+      const el = track.attach(); el.autoplay = true; el.style.display = "none"; applySink(el); document.body.appendChild(el); this.audio.set(p.identity, el);
     });
     this.room.on(RoomEvent.TrackUnsubscribed, (track, _pub, p) => { track.detach().forEach((e) => e.remove()); this.audio.delete(p.identity); });
     await this.room.connect(s.liveKitUrl, s.liveKitToken);
@@ -57,4 +58,4 @@ export class ChannelLink {
   }
 }
 
-export const openMic = () => createLocalAudioTrack();
+export const openMic = () => createLocalAudioTrack(getMicId() ? { deviceId: getMicId() } : undefined);

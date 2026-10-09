@@ -33,7 +33,7 @@ export default function Roster() {
   const move = async (u, to) => {
     if (!to) return;
     setError(""); setNotice("");
-    try { await dispatchMove(u.identity, u.channelId, to); setNotice(`Sent ${u.callsign || u.displayName} to ${label(to)}.`); }
+    try { await dispatchMove(u.identity, u.channelId, to); setNotice(`Sent ${u.callsign || u.displayName} to ${label(to)}. Their radio switches only if it is the app (0.2.60 or newer); the website radio and older apps ignore the move.`); }
     catch (e) { setError(e?.message || "Could not move that radio."); }
   };
 

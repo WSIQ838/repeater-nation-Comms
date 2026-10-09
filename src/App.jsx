@@ -6,6 +6,8 @@ import DirectCalls from "./components/DirectCalls";
 import Talk from "./components/Talk";
 import Roster from "./components/Roster";
 import MapView from "./components/MapView";
+import Settings from "./components/Settings";
+import { checkForUpdate, openLink } from "./lib/updates";
 
 function Login({ onDone, note }) {
   const [email, setEmail] = useState("");
@@ -36,8 +38,12 @@ export default function App() {
   const [session, setSession] = useState(undefined); // undefined = restoring
   const [tab, setTab] = useState("monitor");
   const [note, setNote] = useState("");
+  const [update, setUpdate] = useState(null);
 
   useEffect(() => { restoreSessionFromRedirect().then((r) => r || restoreSession()).then(setSession); }, []);
+
+  // Look for a newer release once the console opens.
+  useEffect(() => { checkForUpdate().then(setUpdate).catch(() => {}); }, []);
 
   // Desktop app: the browser hands Google sign-in back through a repeaternation-dispatch:// link.
   useEffect(() => {
@@ -75,14 +81,15 @@ export default function App() {
       <header>
         <strong>Repeater Nation Dispatch</strong>
         <nav>
-          {["monitor", "talk", "roster", "map", "calls", "channels"].map((t) => (
+          {["monitor", "talk", "roster", "map", "calls", "channels", "settings"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
           ))}
         </nav>
+        {update?.available && <button className="on" onClick={() => openLink(update.download)}>Update to {update.latest}</button>}
         <span>{member.full_name || member.email}</span>
         <button onClick={async () => { await clearSession(); setSession(null); }}>Sign out</button>
       </header>
-      <main>{{ monitor: <Monitor />, talk: <Talk />, roster: <Roster />, map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager /> }[tab]}</main>
+      <main>{{ monitor: <Monitor />, talk: <Talk />, roster: <Roster />, map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} update={update} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}</main>
     </div>
   );
 }
