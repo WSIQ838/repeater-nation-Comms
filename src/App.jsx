@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { restoreSession, restoreSessionFromRedirect, restoreSessionFromLink, loginWithPassword, loginWithGoogle, googleSignInAvailable, clearSession, isDispatcher } from "./lib/auth";
 import ChannelManager from "./components/ChannelManager";
-import Monitor from "./components/Monitor";
+import Console from "./components/Console";
 import DirectCalls from "./components/DirectCalls";
-import Talk from "./components/Talk";
-import Roster from "./components/Roster";
 import MapView from "./components/MapView";
 import Settings from "./components/Settings";
 import { checkForUpdate, openLink } from "./lib/updates";
@@ -81,7 +79,7 @@ export default function App() {
       <header>
         <strong>Repeater Nation Dispatch</strong>
         <nav>
-          {["monitor", "talk", "roster", "map", "calls", "channels", "settings"].map((t) => (
+          {["monitor", "map", "calls", "channels", "settings"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
           ))}
         </nav>
@@ -89,7 +87,7 @@ export default function App() {
         <span>{member.full_name || member.email}</span>
         <button onClick={async () => { await clearSession(); setSession(null); }}>Sign out</button>
       </header>
-      <main>{{ monitor: <Monitor />, talk: <Talk />, roster: <Roster />, map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} update={update} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}</main>
+      <main>{{ monitor: <Console />, map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} update={update} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}</main>
     </div>
   );
 }

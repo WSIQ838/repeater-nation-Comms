@@ -18,3 +18,16 @@ li{flex-wrap:wrap}li span{flex:1 1 160px}
 .pin{background:var(--accent);color:#04121f;font-weight:700;font-size:12px;padding:3px 7px;border-radius:12px;border:2px solid #fff;white-space:nowrap}
 .ptt{width:100%;padding:22px;font-size:18px;margin:8px 0}.ptt.on{background:var(--hot);color:#fff}
 .shell header nav{display:flex;flex-wrap:wrap}
+.console{display:grid;grid-template-columns:1fr 330px;gap:12px;align-items:start}
+@media (max-width:900px){.console{grid-template-columns:1fr}}
+.console .grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.cardhead{display:flex;align-items:center;justify-content:space-between;gap:8px}.cardhead h3{margin:0}
+.switch{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:700}
+.switch input{width:18px;height:18px}
+.card.keyed{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.volrow{display:flex;align-items:center;gap:8px}.volrow input{flex:1}
+.roster{position:sticky;top:8px;max-height:calc(100vh - 100px);overflow:auto}
+.roster h3{margin-top:0}.person{justify-content:space-between;border-bottom:1px solid var(--line)}
+.chip{background:#2d3b4d;border-radius:10px;padding:1px 8px;margin-left:6px;font-size:12px}
+.msgbar{margin-bottom:12px}.msgbar ul{margin:6px 0 0}
+.console .grid{align-items:start}

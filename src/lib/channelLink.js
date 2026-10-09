@@ -7,19 +7,19 @@ const RENEW_MS = 8000;
 // One radio connection to a channel that can transmit: it joins like a radio, asks the
 // server for the floor before sending audio, keeps the floor renewed, and hands it back.
 export class ChannelLink {
-  constructor(channel) { this.channel = channel; this.room = null; this.session = null; this.timer = null; this.held = false; }
+  // listen:false makes a send-only connection (the console already hears the channel on its monitor connection).
+  constructor(channel, opts = {}) { this.channel = channel; this.listen = opts.listen !== false; this.room = null; this.session = null; this.timer = null; this.held = false; this.audio = new Map(); }
 
   async connect() {
     const s = await issueRadioSession(this.channel);
     if (!s?.ok) throw new Error(s?.error || "Could not start a radio session.");
     this.session = s;
     this.room = new Room();
-    this.audio = new Map();
-    this.room.on(RoomEvent.TrackSubscribed, (track, _pub, p) => {
+    if (this.listen) this.room.on(RoomEvent.TrackSubscribed, (track, _pub, p) => {
       if (track.kind !== "audio") return;
       const el = track.attach(); el.autoplay = true; el.style.display = "none"; applySink(el); document.body.appendChild(el); this.audio.set(p.identity, el);
     });
-    this.room.on(RoomEvent.TrackUnsubscribed, (track, _pub, p) => { track.detach().forEach((e) => e.remove()); this.audio.delete(p.identity); });
+    if (this.listen) this.room.on(RoomEvent.TrackUnsubscribed, (track, _pub, p) => { track.detach().forEach((e) => e.remove()); this.audio.delete(p.identity); });
     await this.room.connect(s.liveKitUrl, s.liveKitToken);
     return s;
   }
