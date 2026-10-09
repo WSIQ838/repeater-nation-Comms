@@ -1,7 +1,7 @@
 {
   "name": "repeater-nation-dispatch",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,10 @@
     "livekit-client": "^2.22.3",
     "maplibre-gl": "^4.7.1",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-deep-link": "^2.4.0",
+    "@tauri-apps/plugin-opener": "^2.5.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.4",
