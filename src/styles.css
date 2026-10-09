@@ -31,3 +31,5 @@ li{flex-wrap:wrap}li span{flex:1 1 160px}
 .chip{background:#2d3b4d;border-radius:10px;padding:1px 8px;margin-left:6px;font-size:12px}
 .msgbar{margin-bottom:12px}.msgbar ul{margin:6px 0 0}
 .console .grid{align-items:start}
+.chip.st-available{background:#1f6b3a}.chip.st-busy{background:#8a2b2b}.chip.st-en-route{background:#8a6a1c}
+.chip.st-at-scene{background:#1f4f8a}.chip.st-returning{background:#5b3a8a}.chip.st-out-of-service{background:#444c57}

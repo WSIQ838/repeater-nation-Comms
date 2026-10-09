@@ -189,7 +189,7 @@ function RosterPanel({ channels }) {
         <li key={u.identity} className="person">
           <div>
             <strong>{u.callsign || u.displayName}</strong>
-            {u.status && <span className="chip">{u.status}</span>}
+            {u.status && <span className={"chip st-" + String(u.status).toLowerCase().replace(/[^a-z]+/g, "-")}>{u.status}</span>}
             <br /><small>{label(u.channelId)}</small>
           </div>
           <select value="" onChange={(e) => move(u, e.target.value)}>
