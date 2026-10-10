@@ -39,7 +39,9 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
       const room = new Room({ adaptiveStream: true, dynacast: true });
       const entry = { room, audio: new Map() };
       mon.current = entry;
-      const count = () => set({ people: room.remoteParticipants.size });
+      // Our own console joins as a radio when it transmits; don't count that as another person.
+      const mine = (p) => { try { const me = ctl.selfId(); return !!me && JSON.parse(p.metadata || "{}").userId === me; } catch { return false; } };
+      const count = () => set({ people: [...room.remoteParticipants.values()].filter((p) => !mine(p)).length });
       room.on(RoomEvent.ParticipantConnected, count);
       room.on(RoomEvent.ParticipantDisconnected, (p) => { entry.audio.delete(p.identity); setAir(air.current.filter((n) => n !== who(p))); count(); });
       room.on(RoomEvent.TrackSubscribed, (track, _pub, p) => {
@@ -57,7 +59,7 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
       });
       room.on(RoomEvent.Disconnected, () => { if (mon.current === entry) turnOff(false); });
       await room.connect(s.liveKitUrl, s.liveKitToken);
-      onRef.current = true; set({ on: true, people: room.remoteParticipants.size }); ctl.remember(channel.id, true);
+      onRef.current = true; set({ on: true }); count(); ctl.remember(channel.id, true);
     } catch (e) { mon.current = null; ctl.notice(`${channel.name}: ${e?.message || "could not listen to this channel."}`); }
     set({ busy: false });
   };
@@ -209,7 +211,7 @@ function ActivityLog({ items }) {
 }
 
 // Everyone on the radio, with their status and channel. Dispatch can send a radio to another channel.
-function OnlinePanel({ channels }) {
+function OnlinePanel({ channels, selfId }) {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -218,12 +220,13 @@ function OnlinePanel({ channels }) {
   useEffect(() => {
     let stop = false;
     const poll = async () => {
-      try { const r = await dispatchRoster(); if (!stop) { setUsers(r?.users || []); setError(""); } }
+      try { const r = await dispatchRoster(); if (!stop) { setUsers((r?.users || []).filter((u) => !selfId || u.userId !== selfId)); setError(""); } }
       catch (e) { if (!stop) setError(e?.message || "Could not load the roster."); }
     };
     poll(); const t = setInterval(poll, 5000);
     return () => { stop = true; clearInterval(t); };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selfId]);
 
   const sorted = useMemo(() => [...users].sort((a, b) => label(a.channelId).localeCompare(label(b.channelId)) || String(a.callsign || a.displayName).localeCompare(String(b.callsign || b.displayName))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -281,7 +284,7 @@ function MessagesPanel({ messages, reload, onNotice }) {
   );
 }
 
-export default function Console() {
+export default function Console({ selfId }) {
   const [zones, setZones] = useState([]);
   const [channels, setChannels] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -299,7 +302,7 @@ export default function Console() {
   const [, tick] = useState(0);
   const reg = useRef({});
   const live = useRef({});
-  live.current = { layout, tones };
+  live.current = { layout, tones, selfId };
 
   const setLayout = (l) => { setLayoutState(l); saveLayout(l); };
   const setTones = (t) => { setTonesState(t); saveTones(t); };
@@ -310,6 +313,7 @@ export default function Console() {
     patch: (id, p) => setStates((s) => ({ ...s, [id]: { ...(s[id] || {}), ...p } })),
     activity: (a) => setActivity((l) => [{ ...a, id: a.at.getTime() + Math.random() }, ...l].slice(0, 200)),
     notice: setNotice,
+    selfId: () => live.current.selfId,
     remember: (id, on) => { if (on) onSet.add(id); else onSet.delete(id); saveOn(onSet); },
     alert: (id) => {
       const { layout: l, tones: t } = live.current;
@@ -410,7 +414,7 @@ export default function Console() {
               <button className={side === "messages" ? "on" : ""} onClick={() => setSide("messages")}>Messages</button>
             </div>
             <div className="sidebody">
-              {side === "online" ? <OnlinePanel channels={channels} /> : <MessagesPanel messages={messages} reload={reload} onNotice={setNotice} />}
+              {side === "online" ? <OnlinePanel channels={channels} selfId={selfId} /> : <MessagesPanel messages={messages} reload={reload} onNotice={setNotice} />}
             </div>
           </section>
         </div>
