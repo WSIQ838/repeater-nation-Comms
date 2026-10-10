@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Room, RoomEvent } from "livekit-client";
-import { listZonesAndChannels, issueMonitorSession, dispatchRoster, dispatchMove } from "../lib/auth";
+import { LocalAudioTrack, Room, RoomEvent } from "livekit-client";
+import { listZonesAndChannels, issueMonitorSession, dispatchMove } from "../lib/auth";
+import { elapsed, statusClass, useRoster } from "../lib/roster";
 import { ChannelLink, openMic } from "../lib/channelLink";
 import { applySink } from "../lib/prefs";
 import { listMessages, saveMessage, deleteMessage, recordMessage, playableTrack } from "../lib/messages";
@@ -13,6 +14,11 @@ import { startDeck } from "../lib/deck";
 
 const who = (p) => { try { const m = p?.metadata ? JSON.parse(p.metadata) : {}; return m.radioCallsign || m.callsign || m.displayName || p?.name || p?.identity; } catch { return p?.name || p?.identity; } };
 const ON_KEY = "dispatch-channels-on";
+// A patch links channels: whatever is heard on one is sent out on the others, and keying any
+// of them keys them all. Saved on this computer.
+const PATCH_KEY = "dispatch-patch";
+const loadPatch = () => { try { const p = JSON.parse(localStorage.getItem(PATCH_KEY) || "{}"); return { on: !!p.on, ids: Array.isArray(p.ids) ? p.ids : [] }; } catch { return { on: false, ids: [] }; } };
+const savePatch = (p) => { try { localStorage.setItem(PATCH_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ } };
 const loadOn = () => { try { return new Set(JSON.parse(localStorage.getItem(ON_KEY) || "[]")); } catch { return new Set(); } };
 const saveOn = (set) => { try { localStorage.setItem(ON_KEY, JSON.stringify([...set])); } catch { /* storage unavailable */ } };
 const hhmmss = (d) => d.toLocaleTimeString([], { hour12: false });
@@ -45,18 +51,23 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
       const mine = (p) => { try { const me = ctl.selfId(); return !!me && JSON.parse(p.metadata || "{}").userId === me; } catch { return false; } };
       const count = () => set({ people: [...room.remoteParticipants.values()].filter((p) => !mine(p)).length });
       room.on(RoomEvent.ParticipantConnected, count);
-      room.on(RoomEvent.ParticipantDisconnected, (p) => { entry.audio.delete(p.identity); setAir(air.current.filter((n) => n !== who(p))); count(); });
+      room.on(RoomEvent.ParticipantDisconnected, (p) => { ctl.heard(channel.id, p.identity, null, who(p), false); entry.audio.delete(p.identity); setAir(air.current.filter((n) => n !== who(p))); count(); });
       room.on(RoomEvent.TrackSubscribed, (track, _pub, p) => {
         if (track.kind !== "audio") return;
         if (mine(p)) return; // our own transmission coming back from the channel: never play it to ourselves
         const el = track.attach(); el.autoplay = true; el.style.display = "none"; el.volume = vol.current; applySink(el); document.body.appendChild(el);
         entry.audio.set(p.identity, el);
+        if (!_pub.isMuted) ctl.heard(channel.id, p.identity, track.mediaStreamTrack, who(p), true);
         setAir([...new Set([...air.current, who(p)])]);
         set({ lastAt: Date.now() });
         ctl.activity({ unit: who(p), channel: channel.name, at: new Date() });
         ctl.alert(channel.id);
       });
+      // A radio can stay published between transmissions with its microphone muted.
+      room.on(RoomEvent.TrackMuted, (pub, p) => { if (pub.kind === "audio" && !mine(p)) ctl.heard(channel.id, p.identity, null, who(p), false); });
+      room.on(RoomEvent.TrackUnmuted, (pub, p) => { if (pub.kind === "audio" && !mine(p) && pub.track) ctl.heard(channel.id, p.identity, pub.track.mediaStreamTrack, who(p), true); });
       room.on(RoomEvent.TrackUnsubscribed, (track, _pub, p) => {
+        ctl.heard(channel.id, p.identity, null, who(p), false);
         track.detach().forEach((e) => e.remove()); entry.audio.delete(p.identity);
         setAir(air.current.filter((n) => n !== who(p)));
       });
@@ -108,6 +119,8 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
   };
   async function release() {
     key.current++;
+    const r = relay.current; relay.current = null;
+    if (r?.track) { await tx.current?.unpublish(r.track); r.track.stop(); }
     const m = mic.current; mic.current = null;
     if (m) { await tx.current?.unpublish(m); m.stop(); }
     await tx.current?.end();
@@ -136,9 +149,43 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
     }
   };
 
+  // Patch: send what another channel is hearing out on this one, for as long as it is heard.
+  // Our own relayed audio comes back to the console as "mine" and is ignored, so it can't loop.
+  const relay = useRef(null); // { key, track }
+  const relayStart = async (srcKey, mediaTrack, from) => {
+    if (!onRef.current || sending.current || !mediaTrack) return;
+    sending.current = true;
+    const mine = ++key.current;
+    const r = { key: srcKey, track: null };
+    relay.current = r;
+    // relayStop (or a key press) while this is still starting bumps key.current; then undo what was done.
+    const stale = () => key.current !== mine;
+    try {
+      const l = await sendLink();
+      if (stale()) return;
+      await l.begin();
+      if (stale()) { await l.end(); return; }
+      const track = new LocalAudioTrack(mediaTrack.clone(), undefined, true);
+      r.track = track;
+      await l.publish(track);
+      if (stale()) { await l.unpublish(track); track.stop(); await l.end(); return; }
+      set({ keyed: true, lastAt: Date.now() });
+      ctl.activity({ unit: `Patch: ${from}`, channel: channel.name, at: new Date() });
+    } catch (e) { ctl.notice(`${channel.name}: patch couldn't transmit (${e?.message || "no floor"}).`); await relayStop(srcKey); }
+  };
+  async function relayStop(srcKey) {
+    const r = relay.current;
+    if (!r || (srcKey && r.key !== srcKey)) return;
+    relay.current = null;
+    key.current++;
+    if (r.track) { await tx.current?.unpublish(r.track); r.track.stop(); }
+    await tx.current?.end();
+    set({ keyed: false }); sending.current = false;
+  }
+
   reg.current[channel.id] = {
     get isOn() { return onRef.current; },
-    turnOn, turnOff, down, release, setVolume,
+    turnOn, turnOff, down, release, setVolume, relayStart, relayStop,
     playMessage: (m) => playOut(`"${m.name}"`, () => playableTrack(m.blob)),
     playTone: (t) => playOut(t.name, () => playableTone(t)),
   };
@@ -147,7 +194,7 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
 
 // One channel as a tile: the PTT key on the left is the transmit key (hold), the body switches listening on or off,
 // and the arrow opens volume, messages, tones and the alert setting.
-function ChannelTile({ channel, st, cfg, color, reg, ctl, messages, tones }) {
+function ChannelTile({ channel, st, cfg, color, reg, ctl, messages, tones, patched }) {
   const [menu, setMenu] = useState(false);
   const { on, busy, keyed, onAir = [], people = 0, volume = 1 } = st;
   const A = () => reg.current[channel.id]; // read when used: the engine registers itself while rendering
@@ -159,13 +206,13 @@ function ChannelTile({ channel, st, cfg, color, reg, ctl, messages, tones }) {
   const sub = busy ? "Connecting…" : keyed ? "Transmitting" : onAir.length ? onAir.join(", ") : on ? `${people} ${people === 1 ? "person" : "people"}` : "Off";
 
   return (
-    <div className={"tile " + state} style={color ? { "--tc": color } : undefined}>
-      <button className="bolt" title="Hold to talk (PTT)" aria-label="Push to talk" disabled={!on} onPointerDown={() => A()?.down()} onPointerUp={() => A()?.release()} onPointerLeave={() => (keyed || st.busy) && A()?.release()}><Bolt /><span className="pttlabel">PTT</span></button>
+    <div className={"tile " + state + (patched ? " patched" : "")} style={color ? { "--tc": color } : undefined}>
+      <button className="bolt" title={patched ? "Hold to talk on every patched channel (PTT)" : "Hold to talk (PTT)"} aria-label="Push to talk" disabled={!on} onPointerDown={() => ctl.key(channel.id, true)} onPointerUp={() => ctl.key(channel.id, false)} onPointerLeave={() => (keyed || st.busy) && ctl.key(channel.id, false)}><Bolt /><span className="pttlabel">PTT</span></button>
       <div className="tbody" onClick={() => !busy && (on ? A()?.turnOff() : A()?.turnOn())} title={on ? "Click to switch off" : "Click to listen"}>
         <div className="tname">{cfg.icon && cfg.icon !== "none" && <Icon id={cfg.icon} />} {name}</div>
         <div className="tsub">CH {channel.number ?? ""} · {sub}</div>
       </div>
-      <span className="tbadge">{on ? `V${Math.round(volume * 10)}` : ""}</span>
+      <span className="tbadge">{patched && <b className="pbadge" title="Patched">PATCH</b>}{on ? `V${Math.round(volume * 10)}` : ""}</span>
       <button className="tmenu" title="Volume, messages, tones, alert" onClick={() => setMenu(!menu)}>▾</button>
       {menu && (
         <div className="tpop">
@@ -215,21 +262,12 @@ function ActivityLog({ items }) {
 
 // Everyone on the radio, with their status and channel. Control can send a radio to another channel.
 function OnlinePanel({ channels, selfId }) {
-  const [users, setUsers] = useState([]);
-  const [error, setError] = useState("");
+  const roster = useRoster();
+  const users = roster.users.filter((u) => !selfId || u.userId !== selfId);
+  const [moveError, setMoveError] = useState("");
+  const error = roster.error || moveError;
   const [notice, setNotice] = useState("");
   const label = (id) => channels.find((c) => c.id === id)?.label || "Unknown channel";
-
-  useEffect(() => {
-    let stop = false;
-    const poll = async () => {
-      try { const r = await dispatchRoster(); if (!stop) { setUsers((r?.users || []).filter((u) => !selfId || u.userId !== selfId)); setError(""); } }
-      catch (e) { if (!stop) setError(e?.message || "Could not load the roster."); }
-    };
-    poll(); const t = setInterval(poll, 5000);
-    return () => { stop = true; clearInterval(t); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selfId]);
 
   const sorted = useMemo(() => [...users].sort((a, b) => label(a.channelId).localeCompare(label(b.channelId)) || String(a.callsign || a.displayName).localeCompare(String(b.callsign || b.displayName))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -237,9 +275,9 @@ function OnlinePanel({ channels, selfId }) {
 
   const move = async (u, to) => {
     if (!to) return;
-    setError(""); setNotice("");
+    setMoveError(""); setNotice("");
     try { await dispatchMove(u.identity, u.channelId, to); setNotice(`Sent ${u.callsign || u.displayName} to ${label(to)}. Only the radio app (0.2.60 or newer) follows a move.`); }
-    catch (e) { setError(e?.message || "Could not move that radio."); }
+    catch (e) { setMoveError(e?.message || "Could not move that radio."); }
   };
 
   return (
@@ -251,7 +289,7 @@ function OnlinePanel({ channels, selfId }) {
         <li key={u.identity} className="person">
           <div>
             <strong>{u.callsign || u.displayName}</strong>
-            {u.status && <span className={"chip st-" + String(u.status).toLowerCase().replace(/[^a-z]+/g, "-")}>{u.status}</span>}
+            {u.status && <span className={"chip " + statusClass(u.status)} title={`For ${elapsed(u.since)}`}>{u.status}</span>}
             <br /><small>{label(u.channelId)}</small>
           </div>
           <select value="" onChange={(e) => move(u, e.target.value)}>
@@ -303,10 +341,19 @@ export default function Console({ selfId }) {
   const [toneMenu, setToneMenu] = useState(false);
   const [toneId, setToneId] = useState("");
   const [onSet] = useState(loadOn);
+  const [patch, setPatchState] = useState(loadPatch);
+  const [patchMenu, setPatchMenu] = useState(false);
   const [, tick] = useState(0);
   const reg = useRef({});
   const live = useRef({});
-  live.current = { layout, tones, selfId };
+  live.current = { layout, tones, selfId, patch };
+  const setPatch = (p) => {
+    // Turning a patch off (or taking a channel out) ends any relay still running.
+    for (const t of Object.values(reg.current)) t.relayStop?.();
+    setPatchState(p); savePatch(p);
+    if (p.on) for (const id of p.ids) { const t = reg.current[id]; if (t && !t.isOn) t.turnOn(); }
+  };
+  const inPatch = (id) => patch.on && patch.ids.length > 1 && patch.ids.includes(id);
 
   const setLayout = (l) => { setLayoutState(l); saveLayout(l); };
   const setTones = (t) => { setTonesState(t); saveTones(t); };
@@ -326,6 +373,23 @@ export default function Console({ selfId }) {
       if (tone) playLocal(tone);
     },
     setChannelCfg: (id, patch) => { const l = live.current.layout; setLayout({ ...l, channels: { ...l.channels, [id]: { ...(l.channels?.[id] || {}), ...patch } } }); },
+    // Something started or stopped being heard on a channel: carry it across an active patch.
+    heard: (id, who, mediaTrack, name, on) => {
+      const p = live.current.patch;
+      if (!p.on || p.ids.length < 2 || !p.ids.includes(id)) return;
+      for (const other of p.ids) {
+        if (other === id) continue;
+        const t = reg.current[other];
+        if (!t) continue;
+        if (on) t.relayStart(`${id}:${who}`, mediaTrack, name); else t.relayStop(`${id}:${who}`);
+      }
+    },
+    // The PTT key of a tile. On a patched channel it keys every channel in the patch.
+    key: (id, down) => {
+      const p = live.current.patch;
+      const ids = p.on && p.ids.length > 1 && p.ids.includes(id) ? p.ids : [id];
+      for (const x of ids) { const t = reg.current[x]; if (t && (x === id || t.isOn)) (down ? t.down() : t.release()); }
+    },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
 
@@ -415,6 +479,23 @@ export default function Console({ selfId }) {
             </div>
           )}
         </div>
+        <div className="toolwrap">
+          <button className={"tool" + (patch.on && patch.ids.length > 1 ? " lit" : "")} title="Link channels so what is heard on one goes out on the others" onClick={() => setPatchMenu(!patchMenu)}>
+            <span className="ti">⇄</span><span>PATCH {patch.on && patch.ids.length > 1 ? "ON" : "OFF"}</span>
+          </button>
+          {patchMenu && (
+            <div className="tpop toolpop patchpop">
+              <strong>Patch channels</strong>
+              <small>Tick two or more. While the patch is on, what is heard on one is sent out on the others, and the PTT of any of them talks on all. Patched channels are switched on.</small>
+              <div className="patchlist">
+                {channels.map((c) => (
+                  <label key={c.id}><input type="checkbox" checked={patch.ids.includes(c.id)} onChange={(e) => setPatch({ ...patch, ids: e.target.checked ? [...patch.ids, c.id] : patch.ids.filter((x) => x !== c.id) })} /> {c.label}</label>
+                ))}
+              </div>
+              <button className={patch.on ? "" : "on"} disabled={!patch.on && patch.ids.length < 2} onClick={() => { setPatch({ ...patch, on: !patch.on }); setNotice(patch.on ? "Patch off." : `Patch on: ${patch.ids.length} channels linked.`); }}>{patch.on ? "Turn patch off" : "Turn patch on"}</button>
+            </div>
+          )}
+        </div>
         <button className={"tool" + (layout.alertsOn === false ? " dim" : "")} title="Play the alert tones you set for channels when they are heard" onClick={() => setLayout({ ...layout, alertsOn: layout.alertsOn === false })}>
           <span className="ti">🔔</span><span>ALERTS {layout.alertsOn === false ? "OFF" : "ON"}</span>
         </button>
@@ -437,7 +518,7 @@ export default function Console({ selfId }) {
                   </header>
                   <div className="tiles">
                     {list.map((c) => (
-                      <ChannelTile key={c.id} channel={c} st={states[c.id] || {}} cfg={layout.channels?.[c.id] || {}} color={layout.channels?.[c.id]?.color} reg={reg} ctl={ctl} messages={messages} tones={tones} />
+                      <ChannelTile key={c.id} channel={c} st={states[c.id] || {}} cfg={layout.channels?.[c.id] || {}} color={layout.channels?.[c.id]?.color} reg={reg} ctl={ctl} messages={messages} tones={tones} patched={inPatch(c.id)} />
                     ))}
                     {!list.length && <div className="ztempty">No channels here right now.</div>}
                   </div>

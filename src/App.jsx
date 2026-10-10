@@ -5,7 +5,8 @@ import Console from "./components/Console";
 import DirectCalls from "./components/DirectCalls";
 import MapView from "./components/MapView";
 import Settings from "./components/Settings";
-import { openLink, skipVersion, skippedVersion, useAutoUpdateCheck, useUpdateState } from "./lib/updates";
+import StatusBoard from "./components/StatusBoard";
+import { installUpdate, skipVersion, skippedVersion, useAutoUpdateCheck, useUpdateState } from "./lib/updates";
 
 function Clock() {
   const [now, setNow] = useState(() => new Date());
@@ -19,6 +20,7 @@ function Clock() {
 function UpdatePopup() {
   const { update, seq, auto } = useUpdateState();
   const [dismissed, setDismissed] = useState(0);
+  const [progress, setProgress] = useState("");
   if (!auto || !update?.available || seq <= dismissed || update.latest === skippedVersion()) return null;
   const close = () => setDismissed(seq);
   return (
@@ -26,15 +28,20 @@ function UpdatePopup() {
       <div className="card updatepop">
         <h2>Update available</h2>
         <p>Repeater Nation Dispatch <strong>{update.latest}</strong> is out. You have {update.current}.</p>
-        <p><small>Download and run the installer; it replaces this version. Sign-in and your console layout are kept.</small></p>
+        <p><small>It installs and restarts the console, keeping your sign-in and console layout. If it can't install here, it opens the download instead.</small></p>
         <div>
-          <button className="on" onClick={() => { openLink(update.download); close(); }}>Download update</button>
+          <button className="on" disabled={!!progress} onClick={async () => { if (await installUpdate(update, setProgress) === "opened") close(); }}>{progress || "Update now"}</button>
           <button onClick={close}>Later</button>
           <button onClick={() => { skipVersion(update.latest); close(); }}>Skip this version</button>
         </div>
       </div>
     </div>
   );
+}
+
+function UpdateButton({ update }) {
+  const [progress, setProgress] = useState("");
+  return <button className="on" disabled={!!progress} onClick={() => installUpdate(update, setProgress)}>{progress || `Update to ${update.latest}`}</button>;
 }
 
 function Login({ onDone, note }) {
@@ -110,11 +117,11 @@ export default function App() {
         <span className="logo" aria-hidden="true">RN</span>
         <strong className="apptitle">Repeater Nation Control Console</strong>
         <nav>
-          {["monitor", "map", "calls", ...(canEditChannels(member) ? ["channels"] : []), "settings"].map((t) => (
+          {["monitor", "status", "map", "calls", ...(canEditChannels(member) ? ["channels"] : []), "settings"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
           ))}
         </nav>
-        {update?.available && <button className="on" onClick={() => openLink(update.download)}>Update to {update.latest}</button>}
+        {update?.available && <UpdateButton update={update} />}
         <span className="user">{member.full_name || member.email}</span>
         <Clock />
         <button onClick={async () => { await clearSession(); setSession(null); }}>Sign out</button>
@@ -122,7 +129,7 @@ export default function App() {
       <main>
         {/* The console stays mounted so switching tabs never drops the channels that are on. */}
         <div hidden={tab !== "monitor"}><Console selfId={member.id} /></div>
-        {{ map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}
+        {{ status: <StatusBoard selfId={member.id} />, map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}
       </main>
       <UpdatePopup />
     </div>

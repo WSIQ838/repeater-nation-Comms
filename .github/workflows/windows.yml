@@ -10,6 +10,11 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    env:
+      # Signs the one-click update package. Without this secret the build still works,
+      # and the console falls back to opening the download link.
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +36,16 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeDebug: false
+          args: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && '--config src-tauri/updater.conf.json' || '' }}
+      - name: Publish the update feed
+        if: ${{ env.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          SIG=$(ls src-tauri/target/release/bundle/nsis/*-setup.exe.sig | head -1)
+          .github/scripts/update-feed.sh windows-x86_64 "$SIG" "https://github.com/${GITHUB_REPOSITORY}/releases/download/dispatch-v$VERSION/Repeater.Nation.Dispatch_${VERSION}_x64-setup.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: repeater-nation-dispatch-windows
