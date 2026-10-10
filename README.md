@@ -19,6 +19,7 @@ rules on `RadioZone`/`RadioChannel`, and checks inside any dispatch function.
 - **Map**: live positions of radios that opted in to sharing location
 - **Calls**: every direct call in progress; listen silently or join and talk
 - **Channels**: create, rename, renumber, reorder, move, enable/disable and remove zones and channels
+- **Console look**: zone folders with tabs (including dynamic ones), coloured tiles, General Transmit, Activity Log, Online roster with status, alert tones and tone sending, colours and icons, saved per computer (Settings can copy/import them)
 - **Settings**: installed version, check for updates (and an Update button when a newer release exists), microphone and speaker choice, account and sign out
 
 ## Server side

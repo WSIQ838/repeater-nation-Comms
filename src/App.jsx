@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { restoreSession, restoreSessionFromRedirect, restoreSessionFromLink, loginWithPassword, loginWithGoogle, googleSignInAvailable, clearSession, isDispatcher } from "./lib/auth";
 import ChannelManager from "./components/ChannelManager";
-import Monitor from "./components/Monitor";
+import Console from "./components/Console";
 import DirectCalls from "./components/DirectCalls";
-import Talk from "./components/Talk";
-import Roster from "./components/Roster";
 import MapView from "./components/MapView";
 import Settings from "./components/Settings";
 import { checkForUpdate, openLink } from "./lib/updates";
+
+function Clock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+  return <span className="clock">{now.toLocaleTimeString([], { hour12: false })}</span>;
+}
 
 function Login({ onDone, note }) {
   const [email, setEmail] = useState("");
@@ -79,17 +83,23 @@ export default function App() {
   return (
     <div className="shell">
       <header>
-        <strong>Repeater Nation Dispatch</strong>
+        <span className="logo" aria-hidden="true">RN</span>
+        <strong className="apptitle">Repeater Nation Dispatch Console</strong>
         <nav>
-          {["monitor", "talk", "roster", "map", "calls", "channels", "settings"].map((t) => (
+          {["monitor", "map", "calls", "channels", "settings"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
           ))}
         </nav>
         {update?.available && <button className="on" onClick={() => openLink(update.download)}>Update to {update.latest}</button>}
-        <span>{member.full_name || member.email}</span>
+        <span className="user">{member.full_name || member.email}</span>
+        <Clock />
         <button onClick={async () => { await clearSession(); setSession(null); }}>Sign out</button>
       </header>
-      <main>{{ monitor: <Monitor />, talk: <Talk />, roster: <Roster />, map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} update={update} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}</main>
+      <main>
+        {/* The console stays mounted so switching tabs never drops the channels that are on. */}
+        <div hidden={tab !== "monitor"}><Console /></div>
+        {{ map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} update={update} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}
+      </main>
     </div>
   );
 }
