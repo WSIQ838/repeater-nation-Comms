@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { getMicId, getSpeakerId, setMicId, setSpeakerId } from "../lib/prefs";
-import { checkForUpdate, openLink } from "../lib/updates";
+import { UPDATE_EVERY, loadUpdateEvery, openLink, runUpdateCheck, saveUpdateEvery, useUpdateState } from "../lib/updates";
 import { exportAll, importAll, resetLayoutStorage } from "../lib/layout";
 
-export default function Settings({ member, onSignOut, update }) {
+export default function Settings({ member, onSignOut }) {
   const [devices, setDevices] = useState([]);
   const [mic, setMic] = useState(getMicId());
   const [speaker, setSpeaker] = useState(getSpeakerId());
-  const [state, setState] = useState(update ? { ...update } : null);
-  const [checking, setChecking] = useState(false);
-  const [error, setError] = useState("");
+  const { update: state, checking, error } = useUpdateState();
+  const [every, setEvery] = useState(loadUpdateEvery);
   const [layoutText, setLayoutText] = useState("");
   const [layoutMsg, setLayoutMsg] = useState("");
   const [deckOn, setDeckOn] = useState(() => { try { return localStorage.getItem("dispatch-deck") === "1"; } catch { return false; } });
@@ -23,11 +22,7 @@ export default function Settings({ member, onSignOut, update }) {
   };
   useEffect(() => { loadDevices(); }, []);
 
-  const check = async () => {
-    setChecking(true); setError("");
-    try { setState(await checkForUpdate()); } catch (e) { setError(e?.message || "Could not check for updates."); }
-    setChecking(false);
-  };
+  const check = () => runUpdateCheck();
 
   return (
     <div className="grid wide">
@@ -40,6 +35,12 @@ export default function Settings({ member, onSignOut, update }) {
         <button onClick={check} disabled={checking}>{checking ? "Checking…" : "Check for updates"}</button>
         {state?.available && <button className="on" onClick={() => openLink(state.download)}>Download update</button>}
         {state?.available && <small>Download and run the installer; it replaces this version. Sign-in is kept.</small>}
+        <label><br />Check for updates automatically<br />
+          <select value={every} onChange={(e) => { setEvery(e.target.value); saveUpdateEvery(e.target.value); }}>
+            {UPDATE_EVERY.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+          </select>
+        </label>
+        <small>When a check finds a newer version, a pop-up offers to download it.</small>
       </section>
       <section className="card">
         <h2>Audio</h2>

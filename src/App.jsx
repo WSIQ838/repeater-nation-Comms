@@ -5,12 +5,36 @@ import Console from "./components/Console";
 import DirectCalls from "./components/DirectCalls";
 import MapView from "./components/MapView";
 import Settings from "./components/Settings";
-import { checkForUpdate, openLink } from "./lib/updates";
+import { openLink, skipVersion, skippedVersion, useAutoUpdateCheck, useUpdateState } from "./lib/updates";
 
 function Clock() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
   return <span className="clock">{now.toLocaleTimeString([], { hour12: false })}</span>;
+}
+
+// Pops up when an automatic check finds a newer version. "Later" waits for the next
+// automatic check; "Skip this version" stays quiet until an even newer one comes out.
+// The header button and Settings still show the update either way.
+function UpdatePopup() {
+  const { update, seq, auto } = useUpdateState();
+  const [dismissed, setDismissed] = useState(0);
+  if (!auto || !update?.available || seq <= dismissed || update.latest === skippedVersion()) return null;
+  const close = () => setDismissed(seq);
+  return (
+    <div className="modal" role="dialog" aria-modal="true" aria-label="Update available">
+      <div className="card updatepop">
+        <h2>Update available</h2>
+        <p>Repeater Nation Dispatch <strong>{update.latest}</strong> is out. You have {update.current}.</p>
+        <p><small>Download and run the installer; it replaces this version. Sign-in and your console layout are kept.</small></p>
+        <div>
+          <button className="on" onClick={() => { openLink(update.download); close(); }}>Download update</button>
+          <button onClick={close}>Later</button>
+          <button onClick={() => { skipVersion(update.latest); close(); }}>Skip this version</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Login({ onDone, note }) {
@@ -42,12 +66,12 @@ export default function App() {
   const [session, setSession] = useState(undefined); // undefined = restoring
   const [tab, setTab] = useState("monitor");
   const [note, setNote] = useState("");
-  const [update, setUpdate] = useState(null);
+  const { update } = useUpdateState();
 
   useEffect(() => { restoreSessionFromRedirect().then((r) => r || restoreSession()).then(setSession); }, []);
 
-  // Look for a newer release once the console opens.
-  useEffect(() => { checkForUpdate().then(setUpdate).catch(() => {}); }, []);
+  // Look for a newer release when the console opens and then on the schedule picked in Settings.
+  useAutoUpdateCheck();
 
   // Desktop app: the browser hands Google sign-in back through a repeaternation-dispatch:// link.
   useEffect(() => {
@@ -98,8 +122,9 @@ export default function App() {
       <main>
         {/* The console stays mounted so switching tabs never drops the channels that are on. */}
         <div hidden={tab !== "monitor"}><Console selfId={member.id} /></div>
-        {{ map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} update={update} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}
+        {{ map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}
       </main>
+      <UpdatePopup />
     </div>
   );
 }
