@@ -400,8 +400,8 @@ export default function Console({ selfId }) {
   return (
     <div className="axs">
       <div className="axstools">
-        <button className="gt" title="Hold to talk on every channel that is on" onPointerDown={() => general(true)} onPointerUp={() => general(false)} onPointerLeave={() => general(false)}>
-          <Bolt /><span>GENERAL TRANSMIT</span>
+        <button className="gt" title="All Call: hold to talk on every channel that is on" aria-label="All Call push to talk" onPointerDown={() => general(true)} onPointerUp={() => general(false)} onPointerLeave={() => general(false)}>
+          <Bolt /><span className="gtlabel"><b>PTT</b><span>ALL CALL</span></span>
         </button>
         <div className="toolwrap">
           <button className="tool" onClick={() => { setToneMenu(!toneMenu); if (!toneId && tones[0]) setToneId(tones[0].id); }}><span className="ti">♪</span><span>TONE</span></button>
