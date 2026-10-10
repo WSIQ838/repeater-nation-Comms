@@ -149,3 +149,11 @@ button.danger{background:#7a1c1f}
 .dmeta{font-size:11px;opacity:.7}
 .dsend{display:flex;gap:6px;padding:8px 10px;border-top:1px solid #16304f}.dsend input{flex:1;min-width:0}
 .updatepop{max-width:440px;margin:16px}.updatepop h2{margin-top:0}
+/* Map pop-ups (a radio's callsign and channel): the console's dark panel instead of maplibre's white box with the console's light text.  Prefixed with .maplibregl-map so they win over maplibre-gl.css, which loads after this file. */
+.maplibregl-map .maplibregl-popup-content{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 26px 8px 10px;font:600 13px system-ui,sans-serif;box-shadow:0 4px 14px #0008}
+.maplibregl-map .maplibregl-popup-close-button{color:var(--fg);font-size:18px;background:none;border:0;margin:0;padding:0 6px}
+.maplibregl-map .maplibregl-popup-close-button:hover{background:#222c39;color:#fff}
+.maplibregl-map .maplibregl-popup-anchor-top .maplibregl-popup-tip,.maplibregl-map .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,.maplibregl-map .maplibregl-popup-anchor-top-right .maplibregl-popup-tip{border-bottom-color:var(--panel)}
+.maplibregl-map .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,.maplibregl-map .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,.maplibregl-map .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip{border-top-color:var(--panel)}
+.maplibregl-map .maplibregl-popup-anchor-left .maplibregl-popup-tip{border-right-color:var(--panel)}
+.maplibregl-map .maplibregl-popup-anchor-right .maplibregl-popup-tip{border-left-color:var(--panel)}
