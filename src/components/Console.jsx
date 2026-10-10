@@ -145,7 +145,7 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
   return null;
 }
 
-// One channel as a tile: the bolt is the transmit key (hold), the body switches listening on or off,
+// One channel as a tile: the PTT key on the left is the transmit key (hold), the body switches listening on or off,
 // and the arrow opens volume, messages, tones and the alert setting.
 function ChannelTile({ channel, st, cfg, color, reg, ctl, messages, tones }) {
   const [menu, setMenu] = useState(false);
@@ -160,7 +160,7 @@ function ChannelTile({ channel, st, cfg, color, reg, ctl, messages, tones }) {
 
   return (
     <div className={"tile " + state} style={color ? { "--tc": color } : undefined}>
-      <button className="bolt" title="Hold to talk" disabled={!on} onPointerDown={() => A()?.down()} onPointerUp={() => A()?.release()} onPointerLeave={() => (keyed || st.busy) && A()?.release()}><Bolt /></button>
+      <button className="bolt" title="Hold to talk (PTT)" aria-label="Push to talk" disabled={!on} onPointerDown={() => A()?.down()} onPointerUp={() => A()?.release()} onPointerLeave={() => (keyed || st.busy) && A()?.release()}><Bolt /><span className="pttlabel">PTT</span></button>
       <div className="tbody" onClick={() => !busy && (on ? A()?.turnOff() : A()?.turnOn())} title={on ? "Click to switch off" : "Click to listen"}>
         <div className="tname">{cfg.icon && cfg.icon !== "none" && <Icon id={cfg.icon} />} {name}</div>
         <div className="tsub">CH {channel.number ?? ""} · {sub}</div>
@@ -400,8 +400,8 @@ export default function Console({ selfId }) {
   return (
     <div className="axs">
       <div className="axstools">
-        <button className="gt" title="Hold to talk on every channel that is on" onPointerDown={() => general(true)} onPointerUp={() => general(false)} onPointerLeave={() => general(false)}>
-          <Bolt /><span>GENERAL TRANSMIT</span>
+        <button className="gt" title="All Call: hold to talk on every channel that is on" aria-label="All Call push to talk" onPointerDown={() => general(true)} onPointerUp={() => general(false)} onPointerLeave={() => general(false)}>
+          <Bolt /><span className="gtlabel"><b>PTT</b><span>ALL CALL</span></span>
         </button>
         <div className="toolwrap">
           <button className="tool" onClick={() => { setToneMenu(!toneMenu); if (!toneId && tones[0]) setToneId(tones[0].id); }}><span className="ti">♪</span><span>TONE</span></button>

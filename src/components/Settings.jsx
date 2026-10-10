@@ -62,7 +62,7 @@ export default function Settings({ member, onSignOut }) {
         <section className="card">
           <h2>Stream Deck</h2>
           <label><input type="checkbox" checked={deckOn} onChange={(e) => { try { localStorage.setItem("dispatch-deck", e.target.checked ? "1" : "0"); } catch { /* storage unavailable */ } setDeckOn(e.target.checked); window.dispatchEvent(new Event("dispatch-deck-changed")); }} /> Let the Repeater Nation Stream Deck plugin control the console</label>
-          <p><small>The plugin presses channel keys, push to talk, General Transmit, tones and messages, and shows live channel state on the keys. It only talks to a plugin on this computer. Install the plugin first, then switch this on.</small></p>
+          <p><small>The plugin presses channel keys, push to talk, All Call, tones and messages, and shows live channel state on the keys. It only talks to a plugin on this computer. Install the plugin first, then switch this on.</small></p>
         </section>
       )}
       <section className="card">
