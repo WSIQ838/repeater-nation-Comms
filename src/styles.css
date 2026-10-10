@@ -140,3 +140,11 @@ input[type=color]{padding:0;width:34px;height:26px;background:transparent}
 .edtable{width:100%;border-collapse:collapse;font-size:13px}.edtable th,.edtable td{text-align:left;padding:4px 6px;border-bottom:1px solid #16304f}
 .edtable input:not([type=color]){width:100%;min-width:60px}
 button.danger{background:#7a1c1f}
+.dchat{display:flex;flex-direction:column;height:100%;min-height:0}
+.dwho{padding:8px 10px;border-bottom:1px solid #16304f;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
+.dchip{background:#12335a;border-radius:10px;padding:2px 8px;font-size:12px}
+.dlog{flex:1;overflow:auto;padding:8px 10px;display:flex;flex-direction:column;gap:6px;min-height:120px}
+.dmsg{display:flex;flex-direction:column;background:#0f2a4a;border-radius:6px;padding:5px 8px;max-width:92%;align-self:flex-start;word-break:break-word}
+.dmsg.me{align-self:flex-end;background:#16406e}
+.dmeta{font-size:11px;opacity:.7}
+.dsend{display:flex;gap:6px;padding:8px 10px;border-top:1px solid #16304f}.dsend input{flex:1;min-width:0}

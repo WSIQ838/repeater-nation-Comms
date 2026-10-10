@@ -54,3 +54,20 @@ export function playLocal(t) {
     setTimeout(() => ctx.close(), toneMs(t) + 400);
   } catch { /* audio unavailable */ }
 }
+
+// The little packet chirp of an APRS message: a burst of 1200/2200 Hz data tones.
+export function playAprs() {
+  try {
+    const ctx = new AudioContext();
+    const gain = ctx.createGain(); gain.gain.value = 0.25; gain.connect(ctx.destination);
+    let at = ctx.currentTime + 0.02;
+    const seq = [1200, 2200, 1200, 1200, 2200, 2200, 1200, 2200, 1200, 2200, 2200, 1200, 1200, 2200, 1200, 2200];
+    for (const f of seq) {
+      const osc = ctx.createOscillator(); osc.type = "sine"; osc.frequency.value = f;
+      const env = ctx.createGain(); env.gain.setValueAtTime(0, at); env.gain.linearRampToValueAtTime(1, at + 0.003); env.gain.setValueAtTime(1, at + 0.022); env.gain.linearRampToValueAtTime(0, at + 0.026);
+      osc.connect(env); env.connect(gain); osc.start(at); osc.stop(at + 0.03);
+      at += 0.026;
+    }
+    setTimeout(() => ctx.close(), 800);
+  } catch { /* audio unavailable */ }
+}

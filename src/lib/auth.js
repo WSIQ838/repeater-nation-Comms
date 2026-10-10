@@ -167,3 +167,7 @@ export const dispatchRoster = () => invoke("radio-dispatch", { action: "roster" 
 export const dispatchLocations = () => invoke("radio-dispatch", { action: "locations" });
 export const dispatchMove = (identity, fromChannelId, toChannelId) =>
   invoke("radio-dispatch", { action: "move", identity, from_channel_id: fromChannelId, to_channel_id: toChannelId });
+
+// Dispatcher-only text chat (backend: dispatch-chat).
+export const chatPoll = (since) => invoke("dispatch-chat", { action: "poll", since: since || "" });
+export const chatSend = (text) => invoke("dispatch-chat", { action: "send", text });

@@ -8,6 +8,7 @@ import { playableTone, playLocal } from "../lib/tones";
 import { loadLayout, saveLayout, loadTones, saveTones, zoneFolders, resolveTab } from "../lib/layout";
 import { Icon } from "../lib/icons";
 import LayoutEditor from "./LayoutEditor";
+import DispatchChat, { useDispatchChat } from "./DispatchChat";
 import { startDeck } from "../lib/deck";
 
 const who = (p) => { try { const m = p?.metadata ? JSON.parse(p.metadata) : {}; return m.radioCallsign || m.callsign || m.displayName || p?.name || p?.identity; } catch { return p?.name || p?.identity; } };
@@ -293,6 +294,7 @@ export default function Console({ selfId }) {
   const [notice, setNotice] = useState("Ready.");
   const [activity, setActivity] = useState([]);
   const [side, setSide] = useState("online");
+  const chat = useDispatchChat(selfId, side === "chat");
   const [states, setStates] = useState({});
   const [layout, setLayoutState] = useState(loadLayout);
   const [tones, setTonesState] = useState(loadTones);
@@ -450,9 +452,10 @@ export default function Console({ selfId }) {
             <div className="axstabs">
               <button className={side === "online" ? "on" : ""} onClick={() => setSide("online")}>Online</button>
               <button className={side === "messages" ? "on" : ""} onClick={() => setSide("messages")}>Messages</button>
+              <button className={side === "chat" ? "on" : ""} onClick={() => setSide("chat")}>Dispatchers{chat.unread > 0 ? ` (${chat.unread})` : ""}</button>
             </div>
             <div className="sidebody">
-              {side === "online" ? <OnlinePanel channels={channels} selfId={selfId} /> : <MessagesPanel messages={messages} reload={reload} onNotice={setNotice} />}
+              {side === "online" ? <OnlinePanel channels={channels} selfId={selfId} /> : side === "chat" ? <DispatchChat chat={chat} selfId={selfId} /> : <MessagesPanel messages={messages} reload={reload} onNotice={setNotice} />}
             </div>
           </section>
         </div>
