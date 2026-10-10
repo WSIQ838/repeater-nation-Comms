@@ -83,8 +83,10 @@ body{background:radial-gradient(circle at 15% 0%,#14325a 0,#0a1830 40%,#050a14 1
 .tile.tx{background:#c8262f;border-color:#fff;animation:pulse 1s infinite}
 .tile.wait{border-color:#a0791c}
 @keyframes pulse{50%{box-shadow:0 0 12px #ff5058}}
-.tile .bolt{background:transparent;border:0;color:inherit;width:38px;align-self:stretch;display:flex;align-items:center;justify-content:center;padding:0;margin:0;border-radius:0;cursor:pointer}
-.tile .bolt svg{height:20px}.tile .bolt:hover:not(:disabled){background:rgba(255,255,255,.18)}.tile .bolt:disabled{opacity:.5;cursor:default}
+.tile .bolt{background:rgba(0,0,0,.28);border:0;border-right:1px solid rgba(255,255,255,.18);color:inherit;width:46px;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0;margin:0;border-radius:0;cursor:pointer}
+.tile .bolt svg{height:18px}.tile .bolt .pttlabel{font-size:11px;font-weight:800;letter-spacing:.08em;line-height:1}
+.tile .bolt:hover:not(:disabled){background:rgba(255,255,255,.18)}.tile .bolt:active:not(:disabled){background:#d62c36;color:#fff}.tile .bolt:disabled{opacity:.5;cursor:default}
+.tile.rx .bolt{background:rgba(0,0,0,.1);border-right-color:rgba(0,0,0,.15)}
 .tile .tbody{flex:1;min-width:0;padding:6px 4px;cursor:pointer}
 .tile .tname{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .tsub{font-size:11px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
