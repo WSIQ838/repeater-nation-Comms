@@ -52,7 +52,7 @@ function Login({ onDone, note }) {
   };
   return (
     <form className="card login" onSubmit={submit}>
-      <h1>Dispatch</h1>
+      <h1>Control</h1>
       <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
       <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
       <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
@@ -97,8 +97,8 @@ export default function App() {
   if (!isDispatcher(member)) {
     return (
       <div className="card login">
-        <h1>No dispatch access</h1>
-        <p>{member.email} is not set up as a dispatcher. Ask an administrator to grant dispatch access.</p>
+        <h1>No control access</h1>
+        <p>{member.email} is not set up as a controller. Ask an administrator to grant control access.</p>
         <button onClick={async () => { await clearSession(); setSession(null); }}>Sign out</button>
       </div>
     );
@@ -108,7 +108,7 @@ export default function App() {
     <div className="shell">
       <header>
         <span className="logo" aria-hidden="true">RN</span>
-        <strong className="apptitle">Repeater Nation Dispatch Console</strong>
+        <strong className="apptitle">Repeater Nation Control Console</strong>
         <nav>
           {["monitor", "map", "calls", "channels", "settings"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>

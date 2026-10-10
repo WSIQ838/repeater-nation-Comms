@@ -7,7 +7,7 @@ const POLL_MS = 4000;
 const name = (c, side) => c[`${side}_callsign`] || c[`${side}_name`] || c[`${side}_display_name`] || c[`${side}_user_id`] || "Unknown";
 const since = (c) => { const t = Date.parse(c.answered_at || c.created_date || c.created_at || ""); if (!t) return ""; const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
-// Live list of member-to-member direct calls. Dispatch can listen silently or join in and talk.
+// Live list of member-to-member direct calls. Control can listen silently or join in and talk.
 export default function DirectCalls() {
   const [calls, setCalls] = useState([]);
   const [error, setError] = useState("");
@@ -50,7 +50,7 @@ export default function DirectCalls() {
     await leave();
     try {
       const t = await directCallToken(call.id, mode);
-      if (!t?.liveKitToken) throw new Error(t?.error || "The server refused dispatch access to this call.");
+      if (!t?.liveKitToken) throw new Error(t?.error || "The server refused control access to this call.");
       const room = new Room();
       const s = { room, audio: new Map(), mic: null, startedAt: Date.now() };
       session.current = s;
