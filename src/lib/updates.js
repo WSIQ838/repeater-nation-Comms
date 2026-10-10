@@ -37,6 +37,35 @@ export async function openLink(url) {
   else window.open(url, "_blank", "noopener");
 }
 
+// One click: download the signed update, install it and restart. Falls back to the download
+// link when there is none to install (a build made without the signing key, or the browser).
+// onProgress gets short texts for the button.
+export async function installUpdate(update, onProgress = () => {}) {
+  if (window.__TAURI_INTERNALS__) {
+    try {
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const u = await check();
+      if (u) {
+        let total = 0, got = 0;
+        onProgress("Downloading…");
+        await u.downloadAndInstall((e) => {
+          if (e.event === "Started") total = e.data.contentLength || 0;
+          else if (e.event === "Progress") { got += e.data.chunkLength || 0; if (total) onProgress(`Downloading… ${Math.min(100, Math.round((got * 100) / total))}%`); }
+          else if (e.event === "Finished") onProgress("Installing…");
+        });
+        // Windows closes the console itself to run the installer; elsewhere restart into the new version.
+        onProgress("Restarting…");
+        const { relaunch } = await import("@tauri-apps/plugin-process");
+        await relaunch();
+        return "installed";
+      }
+    } catch (e) { console.warn("[update] one-click update not available, opening the download link", e); }
+  }
+  onProgress("");
+  await openLink(update.download);
+  return "opened";
+}
+
 export const loadUpdateEvery = () => { const v = read(EVERY_KEY); return UPDATE_EVERY.some((x) => x.id === v) ? v : DEFAULT_EVERY; };
 export const skippedVersion = () => read(SKIP_KEY);
 export const skipVersion = (v) => write(SKIP_KEY, v);

@@ -16,6 +16,10 @@ pub fn run() {
                 let _ = w.set_focus();
             }
         }));
+        // One-click updates: the update pop-up downloads the signed update, installs it and restarts.
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init());
     }
 
     builder = builder

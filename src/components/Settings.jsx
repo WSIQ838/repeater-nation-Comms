@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getMicId, getSpeakerId, setMicId, setSpeakerId } from "../lib/prefs";
-import { UPDATE_EVERY, loadUpdateEvery, openLink, runUpdateCheck, saveUpdateEvery, useUpdateState } from "../lib/updates";
+import { UPDATE_EVERY, installUpdate, loadUpdateEvery, runUpdateCheck, saveUpdateEvery, useUpdateState } from "../lib/updates";
 import { exportAll, importAll, resetLayoutStorage } from "../lib/layout";
 
 export default function Settings({ member, onSignOut }) {
@@ -9,6 +9,7 @@ export default function Settings({ member, onSignOut }) {
   const [speaker, setSpeaker] = useState(getSpeakerId());
   const { update: state, checking, error } = useUpdateState();
   const [every, setEvery] = useState(loadUpdateEvery);
+  const [progress, setProgress] = useState("");
   const [layoutText, setLayoutText] = useState("");
   const [layoutMsg, setLayoutMsg] = useState("");
   const [deckOn, setDeckOn] = useState(() => { try { return localStorage.getItem("dispatch-deck") === "1"; } catch { return false; } });
@@ -33,8 +34,8 @@ export default function Settings({ member, onSignOut }) {
         {state?.available && <p><strong>Version {state.latest} is available.</strong></p>}
         {error && <p className="err">{error}</p>}
         <button onClick={check} disabled={checking}>{checking ? "Checking…" : "Check for updates"}</button>
-        {state?.available && <button className="on" onClick={() => openLink(state.download)}>Download update</button>}
-        {state?.available && <small>Download and run the installer; it replaces this version. Sign-in is kept.</small>}
+        {state?.available && <button className="on" disabled={!!progress} onClick={() => installUpdate(state, setProgress)}>{progress || "Update now"}</button>}
+        {state?.available && <small>Installs the update and restarts the console. Sign-in is kept.</small>}
         <label><br />Check for updates automatically<br />
           <select value={every} onChange={(e) => { setEvery(e.target.value); saveUpdateEvery(e.target.value); }}>
             {UPDATE_EVERY.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}

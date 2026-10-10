@@ -16,12 +16,14 @@ rules on `RadioZone`/`RadioChannel`, and checks inside any dispatch function.
 - **Monitor**: listen to many channels at once, volume and mute per channel
 - **Talk**: join a channel and hold to talk (same floor control as the radio); record, store and play messages onto a channel (messages are kept on the dispatcher's computer)
 - **Roster**: everyone on the radio by channel, and send any radio to another channel
-- **Map**: live positions of radios that opted in to sharing location
+- **Map**: live positions of radios that opted in to sharing location, coloured by status, with optional trails; click a radio for its status, channel and a Move to channel list
+- **Status board**: every unit in a column for its status (Available, En Route, At Scene, Busy, Returning, Out of Service) with how long it has had it, longest first, and Move to channel
+- **Patch**: link two or more channels; what is heard on one is sent out on the others, and the PTT of any of them talks on all
 - **Calls**: every direct call in progress; listen silently or join and talk
 - **Channels**: create, rename, renumber, reorder, move, enable/disable and remove zones and channels
 - **Console look**: zone folders with tabs (including dynamic ones), coloured tiles, All Call (talk on every channel that is on), Activity Log, Online roster with status, alert tones and tone sending, colours and icons, saved per computer (Settings can copy/import them)
 - **Stream Deck** (desktop app, off by default): the Repeater Nation Stream Deck plugin (see the radio repo's `streamdeck/`) presses channel keys, push to talk, All Call, tones and messages and shows live channel state on the keys
-- **Settings**: installed version, check for updates (and an Update button when a newer release exists), how often to check automatically (a pop-up offers new versions), microphone and speaker choice, account and sign out
+- **Settings**: installed version, check for updates (and an Update button when a newer release exists), how often to check automatically (a pop-up offers new versions and installs them in one click), microphone and speaker choice, account and sign out
 
 ## Server side
 
@@ -47,3 +49,11 @@ npm run dev
 ## Desktop build
 
 `npm run tauri:build` (Windows installer via `.github/workflows/windows.yml`, manual run).
+
+## One-click updates
+
+The console updates itself with Tauri's updater. The Windows workflow signs the installer and
+publishes `windows-x86_64.json` on the `dispatch-updates` pre-release, which the console reads
+(`plugins.updater` in `src-tauri/tauri.conf.json`). Signing needs the repository secret
+`TAURI_SIGNING_PRIVATE_KEY` (the private key matching the `pubkey` in that file; the radio app
+uses the same key). Without it the build still works and "Update now" opens the download link.
