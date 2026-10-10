@@ -47,6 +47,7 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
       room.on(RoomEvent.ParticipantDisconnected, (p) => { entry.audio.delete(p.identity); setAir(air.current.filter((n) => n !== who(p))); count(); });
       room.on(RoomEvent.TrackSubscribed, (track, _pub, p) => {
         if (track.kind !== "audio") return;
+        if (mine(p)) return; // our own transmission coming back from the channel: never play it to ourselves
         const el = track.attach(); el.autoplay = true; el.style.display = "none"; el.volume = vol.current; applySink(el); document.body.appendChild(el);
         entry.audio.set(p.identity, el);
         setAir([...new Set([...air.current, who(p)])]);
