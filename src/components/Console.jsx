@@ -8,6 +8,7 @@ import { playableTone, playLocal } from "../lib/tones";
 import { loadLayout, saveLayout, loadTones, saveTones, zoneFolders, resolveTab } from "../lib/layout";
 import { Icon } from "../lib/icons";
 import LayoutEditor from "./LayoutEditor";
+import { startDeck } from "../lib/deck";
 
 const who = (p) => { try { const m = p?.metadata ? JSON.parse(p.metadata) : {}; return m.radioCallsign || m.callsign || m.displayName || p?.name || p?.identity; } catch { return p?.name || p?.identity; } };
 const ON_KEY = "dispatch-channels-on";
@@ -349,13 +350,49 @@ export default function Console({ selfId }) {
   const folders = layout.mode === "custom" ? layout.folders : zoneFolders(zones, layout);
   const onCount = channels.filter((c) => states[c.id]?.on).length;
   const general = (down) => { for (const t of Object.values(reg.current)) if (t.isOn) (down ? t.down() : t.release()); };
-  const sendTone = () => {
-    const t = tones.find((x) => x.id === toneId); if (!t) return;
+  const sendToneNow = (t) => {
     const ids = channels.filter((c) => states[c.id]?.on).map((c) => c.id);
     if (!ids.length) { setNotice("Switch a channel on first, then send the tone."); return; }
     ids.forEach((id) => reg.current[id]?.playTone(t));
-    setToneMenu(false);
   };
+  const sendTone = () => { const t = tones.find((x) => x.id === toneId); if (!t) return; sendToneNow(t); setToneMenu(false); };
+
+  // Stream Deck: the plugin sends key presses and gets the console's state (see lib/deck.js). Switched on in Settings.
+  const [deckOn, setDeckOn] = useState(() => { try { return localStorage.getItem("dispatch-deck") === "1" && !!window.__TAURI_INTERNALS__; } catch { return false; } });
+  const deckRef = useRef(null), deckCmd = useRef(null);
+  deckCmd.current = (m) => {
+    const ch = channels[(Number(m.slot) || 1) - 1], a = ch && reg.current[ch.id];
+    switch (m.op) {
+      case "listen": if (m.pressed && a) (a.isOn ? a.turnOff() : a.turnOn()); break;
+      case "ptt": if (a) (m.pressed ? a.down() : a.release()); break;
+      case "general": general(!!m.pressed); break;
+      case "tone": { const t = tones[(Number(m.index) || 1) - 1]; if (m.pressed && t) sendToneNow(t); break; }
+      case "message": {
+        const msg = messages[(Number(m.index) || 1) - 1];
+        if (m.pressed && msg) for (const c of channels) if (states[c.id]?.on) reg.current[c.id]?.playMessage(msg);
+        break;
+      }
+      case "alerts": if (m.pressed) setLayout({ ...layout, alertsOn: layout.alertsOn === false }); break;
+      default: break;
+    }
+  };
+  useEffect(() => {
+    const changed = () => { try { setDeckOn(localStorage.getItem("dispatch-deck") === "1" && !!window.__TAURI_INTERNALS__); } catch { /* ignore */ } };
+    window.addEventListener("dispatch-deck-changed", changed);
+    return () => window.removeEventListener("dispatch-deck-changed", changed);
+  }, []);
+  useEffect(() => {
+    if (!deckOn) return undefined;
+    const d = startDeck({ app: "dispatch", version: String(__APP_VERSION__), onCommand: (m) => deckCmd.current?.(m) });
+    deckRef.current = d;
+    return () => { d.stop(); deckRef.current = null; };
+  }, [deckOn]);
+  const deckJson = JSON.stringify({
+    onCount, alertsOn: layout.alertsOn !== false, tx: channels.some((c) => states[c.id]?.keyed),
+    tones: tones.map((t) => ({ id: t.id, name: t.name })), messages: messages.map((m) => ({ id: m.id, name: m.name })),
+    channels: channels.map((c) => { const st = states[c.id] || {}; const cfg = layout.channels?.[c.id] || {}; return { id: c.id, name: cfg.label || c.name, on: !!st.on, rx: !!st.on && (st.onAir || []).length > 0, rxName: (st.onAir || [])[0] || "", tx: !!st.keyed, people: st.people || 0, color: cfg.color || "" }; }),
+  });
+  useEffect(() => { deckRef.current?.send(JSON.parse(deckJson)); }, [deckJson, deckOn]);
 
   return (
     <div className="axs">

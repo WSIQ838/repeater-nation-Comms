@@ -12,6 +12,7 @@ export default function Settings({ member, onSignOut, update }) {
   const [error, setError] = useState("");
   const [layoutText, setLayoutText] = useState("");
   const [layoutMsg, setLayoutMsg] = useState("");
+  const [deckOn, setDeckOn] = useState(() => { try { return localStorage.getItem("dispatch-deck") === "1"; } catch { return false; } });
 
   const loadDevices = async () => {
     try {
@@ -56,6 +57,13 @@ export default function Settings({ member, onSignOut, update }) {
         </label>
         <small>Changes apply the next time you join a channel or call.</small>
       </section>
+      {window.__TAURI_INTERNALS__ && (
+        <section className="card">
+          <h2>Stream Deck</h2>
+          <label><input type="checkbox" checked={deckOn} onChange={(e) => { try { localStorage.setItem("dispatch-deck", e.target.checked ? "1" : "0"); } catch { /* storage unavailable */ } setDeckOn(e.target.checked); window.dispatchEvent(new Event("dispatch-deck-changed")); }} /> Let the Repeater Nation Stream Deck plugin control the console</label>
+          <p><small>The plugin presses channel keys, push to talk, General Transmit, tones and messages, and shows live channel state on the keys. It only talks to a plugin on this computer. Install the plugin first, then switch this on.</small></p>
+        </section>
+      )}
       <section className="card">
         <h2>Console layout</h2>
         <p><small>Folders, tabs, colours, icons, alerts and tones are saved on this computer. Copy them to use the same setup elsewhere.</small></p>
