@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { restoreSession, restoreSessionFromRedirect, restoreSessionFromLink, loginWithPassword, loginWithGoogle, googleSignInAvailable, clearSession, isDispatcher } from "./lib/auth";
+import { restoreSession, restoreSessionFromRedirect, restoreSessionFromLink, loginWithPassword, loginWithGoogle, googleSignInAvailable, clearSession, isDispatcher, canEditChannels } from "./lib/auth";
 import ChannelManager from "./components/ChannelManager";
 import Console from "./components/Console";
 import DirectCalls from "./components/DirectCalls";
@@ -110,7 +110,7 @@ export default function App() {
         <span className="logo" aria-hidden="true">RN</span>
         <strong className="apptitle">Repeater Nation Control Console</strong>
         <nav>
-          {["monitor", "map", "calls", "channels", "settings"].map((t) => (
+          {["monitor", "map", "calls", ...(canEditChannels(member) ? ["channels"] : []), "settings"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
           ))}
         </nav>

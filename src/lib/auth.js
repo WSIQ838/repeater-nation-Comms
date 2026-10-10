@@ -26,6 +26,9 @@ export function isDispatcher(member) {
   return config.dispatchRoles.includes(String(member.role || "").toLowerCase());
 }
 
+// Creating and editing channels and zones stays with admins; the server rules only let them write those.
+export const canEditChannels = (member) => ["admin", "super_admin"].includes(String(member?.role || "").toLowerCase());
+
 export async function restoreSession() {
   let token = "";
   try { token = localStorage.getItem(TOKEN_KEY) || ""; } catch { /* storage unavailable */ }
