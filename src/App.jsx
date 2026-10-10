@@ -97,7 +97,7 @@ export default function App() {
       </header>
       <main>
         {/* The console stays mounted so switching tabs never drops the channels that are on. */}
-        <div hidden={tab !== "monitor"}><Console /></div>
+        <div hidden={tab !== "monitor"}><Console selfId={member.id} /></div>
         {{ map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} update={update} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}
       </main>
     </div>
