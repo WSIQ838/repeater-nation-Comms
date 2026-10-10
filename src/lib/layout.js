@@ -25,7 +25,7 @@ export const resetLayoutStorage = () => { try { localStorage.removeItem(LAYOUT_K
 export const exportAll = () => JSON.stringify({ layout: loadLayout(), tones: loadTones() }, null, 2);
 export function importAll(text) {
   const d = JSON.parse(text);
-  if (!d || typeof d !== "object" || (!d.layout && !d.tones)) throw new Error("That isn't a dispatch layout export.");
+  if (!d || typeof d !== "object" || (!d.layout && !d.tones)) throw new Error("That isn't a control layout export.");
   if (d.layout) saveLayout({ ...emptyLayout(), ...d.layout });
   if (Array.isArray(d.tones)) saveTones(d.tones);
 }

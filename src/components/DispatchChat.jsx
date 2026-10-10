@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { chatPoll, chatSend } from "../lib/auth";
 import { playAprs } from "../lib/tones";
 
-// Polls the dispatcher chat while the console is open (whichever side tab is showing), so
+// Polls the controller chat while the console is open (whichever side tab is showing), so
 // messages chirp and count as unread even when the chat isn't in view.
 export function useDispatchChat(selfId, visible) {
   const [messages, setMessages] = useState([]);
@@ -31,7 +31,7 @@ export function useDispatchChat(selfId, visible) {
           if (!first.current && theirs.length) { playAprs(); if (!vis.current) setUnread((n) => n + theirs.length); }
         }
         first.current = false;
-      } catch (e) { if (!stop) setError(e?.message || "Could not reach the dispatcher chat."); }
+      } catch (e) { if (!stop) setError(e?.message || "Could not reach the controller chat."); }
     };
     poll(); const t = setInterval(poll, 3000);
     return () => { stop = true; clearInterval(t); };
@@ -57,12 +57,12 @@ export default function DispatchChat({ chat, selfId }) {
 
   return (
     <div className="dchat">
-      <div className="dwho"><b>Online dispatchers ({chat.online.length})</b>
+      <div className="dwho"><b>Online controllers ({chat.online.length})</b>
         {chat.online.map((p) => <span key={p.userId} className="dchip">{p.name}{p.userId === selfId ? " (you)" : ""}</span>)}
       </div>
       {(chat.error || err) && <p className="err">{err || chat.error}</p>}
       <div className="dlog">
-        {chat.messages.length === 0 && <p className="muted">No messages yet. Everything typed here goes to every dispatcher.</p>}
+        {chat.messages.length === 0 && <p className="muted">No messages yet. Everything typed here goes to every controller.</p>}
         {chat.messages.map((m) => (
           <div key={m.id} className={`dmsg${m.userId === selfId ? " me" : ""}`}>
             <span className="dmeta">{m.name} · {new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
@@ -72,7 +72,7 @@ export default function DispatchChat({ chat, selfId }) {
         <div ref={end} />
       </div>
       <form className="dsend" onSubmit={send}>
-        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={500} placeholder="Message all dispatchers" />
+        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={500} placeholder="Message all controllers" />
         <button disabled={sending || !text.trim()}>Send</button>
       </form>
     </div>
