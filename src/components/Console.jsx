@@ -113,7 +113,7 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
       if (key.current !== mine) { mic.current.stop(); mic.current = null; await l.end(); return; }
       await l.publish(mic.current);
       set({ keyed: true, lastAt: Date.now() });
-      ctl.activity({ unit: "Dispatch (you)", channel: channel.name, at: new Date() });
+      ctl.activity({ unit: "Control (you)", channel: channel.name, at: new Date() });
     } catch (e) { ctl.notice(`${channel.name}: ${e?.message || "could not transmit."}`); await release(); }
     finally { if (key.current === mine && !mic.current) sending.current = false; }
   };
@@ -139,7 +139,7 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
       audio = await make();
       await l.publish(audio.track);
       set({ keyed: true, lastAt: Date.now() });
-      ctl.activity({ unit: `Dispatch (${label})`, channel: channel.name, at: new Date() });
+      ctl.activity({ unit: `Control (${label})`, channel: channel.name, at: new Date() });
       audio.start(); await audio.done;
     } catch (e) { ctl.notice(`${channel.name}: ${e?.message || "could not send."}`); }
     finally {
@@ -260,7 +260,7 @@ function ActivityLog({ items }) {
   );
 }
 
-// Everyone on the radio, with their status and channel. Dispatch can send a radio to another channel.
+// Everyone on the radio, with their status and channel. Control can send a radio to another channel.
 function OnlinePanel({ channels, selfId }) {
   const roster = useRoster();
   const users = roster.users.filter((u) => !selfId || u.userId !== selfId);
@@ -533,7 +533,7 @@ export default function Console({ selfId }) {
             <div className="axstabs">
               <button className={side === "online" ? "on" : ""} onClick={() => setSide("online")}>Online</button>
               <button className={side === "messages" ? "on" : ""} onClick={() => setSide("messages")}>Messages</button>
-              <button className={side === "chat" ? "on" : ""} onClick={() => setSide("chat")}>Dispatchers{chat.unread > 0 ? ` (${chat.unread})` : ""}</button>
+              <button className={side === "chat" ? "on" : ""} onClick={() => setSide("chat")}>Controllers{chat.unread > 0 ? ` (${chat.unread})` : ""}</button>
             </div>
             <div className="sidebody">
               {side === "online" ? <OnlinePanel channels={channels} selfId={selfId} /> : side === "chat" ? <DispatchChat chat={chat} selfId={selfId} /> : <MessagesPanel messages={messages} reload={reload} onNotice={setNotice} />}

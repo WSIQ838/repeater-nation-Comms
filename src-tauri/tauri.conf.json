@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Repeater Nation Dispatch",
+        "title": "Repeater Nation Control",
         "width": 1280,
         "height": 800,
         "minWidth": 960,
