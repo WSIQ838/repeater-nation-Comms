@@ -186,3 +186,40 @@ button.danger{background:#7a1c1f}
 .patchlist label{display:flex;align-items:center;gap:6px;font-size:12px}.patchlist input{margin:0}
 .tile.patched{box-shadow:inset 0 0 0 2px #c97a1c}
 .tile .pbadge{background:#c97a1c;color:#111;border-radius:2px;padding:0 4px;margin-right:5px;font-size:9px;letter-spacing:.06em}
+
+/* Phone layout: one column, a bottom tab bar, big push-to-talk keys. */
+body{-webkit-text-size-adjust:100%}
+.tile .bolt,.axstools .gt,.ptt,.axsmain button.talk{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media (max-width:720px){
+  html,body{overscroll-behavior:none}
+  .shell{padding-top:env(safe-area-inset-top);padding-bottom:calc(58px + env(safe-area-inset-bottom))}
+  .shell > header{flex-wrap:wrap;gap:8px;padding:8px 12px;position:sticky;top:0;z-index:20}
+  .shell > header .apptitle,.shell > header .user{display:none}
+  .shell > header .logo{flex:none}
+  .shell > header .clock{margin-left:auto;font-size:17px;min-width:0}
+  .shell > header nav{position:fixed;left:0;right:0;bottom:0;z-index:30;margin:0;gap:0;background:#071322;border-top:1px solid #16304f;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;flex-wrap:nowrap}
+  .shell > header nav button{flex:1 1 0;min-width:0;margin:0;border-radius:0;background:transparent;color:#9fb2c8;padding:14px 2px;font-size:9.5px;letter-spacing:.02em;border-top:3px solid transparent}
+  .shell > header nav button.on{background:#0f2744;color:#fff;border-top-color:#2a78e0}
+  .shell main{padding:8px 8px 12px}
+  .axs{height:auto}
+  .axsmain{grid-template-columns:1fr}
+  .zones{grid-template-columns:1fr}
+  .zone .tiles{grid-template-columns:1fr}
+  .tile{min-height:76px}
+  .tile .bolt{width:78px}
+  .tile .tname{font-size:16px}
+  .axstools{flex-wrap:wrap}
+  .axstools .gt{flex:1 1 100%;justify-content:center;padding:16px}
+  .axstools .tool{flex:1 1 30%}
+  .tile .tpop,.toolwrap .tpop{position:fixed;left:8px;right:8px;top:auto;bottom:70px;width:auto;max-height:60vh;overflow:auto}
+  .sbcols{grid-template-columns:1fr}
+  .edsplit{grid-template-columns:1fr}
+  .grid,.grid.wide,.console .grid{grid-template-columns:minmax(0,1fr)}
+  .card{min-width:0}
+  textarea,select,input{max-width:100%}
+  .map{height:calc(100vh - 190px)}
+  .axspanel{min-height:260px}
+  .dchat{min-height:340px}
+  input,select,textarea{font-size:16px}
+  .login{margin:6vh 12px;max-width:none}
+}

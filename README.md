@@ -57,3 +57,7 @@ publishes `windows-x86_64.json` on the `dispatch-updates` pre-release, which the
 (`plugins.updater` in `src-tauri/tauri.conf.json`). Signing needs the repository secret
 `TAURI_SIGNING_PRIVATE_KEY` (the private key matching the `pubkey` in that file; the radio app
 uses the same key). Without it the build still works and "Update now" opens the download link.
+
+## Phone app (Android and iPhone)
+
+The same console runs on a phone: the header tabs become a bar along the bottom, channels stack in one column and the PTT keys are bigger. Run the **Build Repeater Nation Control for Android** workflow to get an `.apk` on the release page (open it on the phone to install), and **Build Repeater Nation Control for iPhone** for an unsigned `.ipa` on the `ios-test` pre-release (an Apple developer account is needed to install it normally). Updates on a phone open the download page; they don't install by themselves.

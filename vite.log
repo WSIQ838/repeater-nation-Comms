@@ -1,0 +1,52 @@
+7:20:22 PM [vite] (client) Re-optimizing dependencies because lockfile has changed
+
+  VITE v7.3.7  ready in 276 ms
+
+  ➜  Local:   http://localhost:1431/
+  ➜  Network: use --host to expose
+(!) Failed to run dependency scan. Skipping dependency pre-bundling. Error:   Failed to scan for dependencies from entries:
+  /home/user/repeater-nation-comms/index.html
+
+  [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mNo matching export in "../../../tmp/claude-0/-home-user/ec6fc03d-6b91-5e4d-b115-cc32cd35c4e1/scratchpad/mockauth.js" for import "canEditChannels"[0m
+
+    src/App.jsx:2:164:
+[37m      2 │ ...e, clearSession, isDispatcher, [32mcanEditChannels[37m } from "./lib/auth";
+        ╵                                   [32m~~~~~~~~~~~~~~~[0m
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mNo matching export in "../../../tmp/claude-0/-home-user/ec6fc03d-6b91-5e4d-b115-cc32cd35c4e1/scratchpad/mocklivekit.js" for import "LocalAudioTrack"[0m
+
+    src/components/Console.jsx:2:9:
+[37m      2 │ import { [32mLocalAudioTrack[37m, Room, RoomEvent } from "livekit-client";
+        ╵          [32m~~~~~~~~~~~~~~~[0m
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mNo matching export in "../../../tmp/claude-0/-home-user/ec6fc03d-6b91-5e4d-b115-cc32cd35c4e1/scratchpad/mockauth.js" for import "chatPoll"[0m
+
+    src/components/DispatchChat.jsx:2:9:
+[37m      2 │ import { [32mchatPoll[37m, chatSend } from "../lib/auth";
+        ╵          [32m~~~~~~~~[0m
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mNo matching export in "../../../tmp/claude-0/-home-user/ec6fc03d-6b91-5e4d-b115-cc32cd35c4e1/scratchpad/mockauth.js" for import "chatSend"[0m
+
+    src/components/DispatchChat.jsx:2:19:
+[37m      2 │ import { chatPoll, [32mchatSend[37m } from "../lib/auth";
+        ╵                    [32m~~~~~~~~[0m
+
+
+    at failureErrorWithLog (/home/user/repeater-nation-comms/node_modules/esbuild/lib/main.js:1752:15)
+    at /home/user/repeater-nation-comms/node_modules/esbuild/lib/main.js:1211:25
+    at runOnEndCallbacks (/home/user/repeater-nation-comms/node_modules/esbuild/lib/main.js:1592:45)
+    at buildResponseToResult (/home/user/repeater-nation-comms/node_modules/esbuild/lib/main.js:1209:7)
+    at /home/user/repeater-nation-comms/node_modules/esbuild/lib/main.js:1221:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (/home/user/repeater-nation-comms/node_modules/esbuild/lib/main.js:1220:54)
+    at handleRequest (/home/user/repeater-nation-comms/node_modules/esbuild/lib/main.js:911:17)
+    at handleIncomingPacket (/home/user/repeater-nation-comms/node_modules/esbuild/lib/main.js:936:7)
+    at Socket.readFromStdout (/home/user/repeater-nation-comms/node_modules/esbuild/lib/main.js:864:7)
+7:20:32 PM [vite] (client) ✨ new dependencies optimized: react-dom/client, @tauri-apps/plugin-deep-link, @tauri-apps/plugin-opener, @tauri-apps/plugin-updater, @tauri-apps/plugin-process, maplibre-gl, @base44/sdk
+7:20:32 PM [vite] (client) ✨ optimized dependencies changed. reloading
+[BABEL] Note: The code generator has deoptimised the styling of /tmp/claude-0/-home-user/ec6fc03d-6b91-5e4d-b115-cc32cd35c4e1/scratchpad/.vc/deps/react-dom_client.js?v=e96f3d17 as it exceeds the max of 500KB.
+[BABEL] Note: The code generator has deoptimised the styling of /tmp/claude-0/-home-user/ec6fc03d-6b91-5e4d-b115-cc32cd35c4e1/scratchpad/.vc/deps/react-dom_client.js?v=15d3a3c1 as it exceeds the max of 500KB.
+7:21:18 PM [vite] (client) hmr update /src/App.jsx, /src/components/ChannelManager.jsx, /src/components/Console.jsx, /src/components/DirectCalls.jsx, /src/components/StatusBoard.jsx, /src/components/DispatchChat.jsx, /src/components/MapView.jsx

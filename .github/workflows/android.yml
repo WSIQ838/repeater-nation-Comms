@@ -1,0 +1,96 @@
+name: Build Repeater Nation Control for Android
+
+# Run by hand (Actions › Run workflow). It builds the phone app and adds the APK to the
+# dispatch-v<version> release (created here if the Windows build hasn't made it yet).
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Rust for Android
+        run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+
+      - name: Find the Android NDK
+        run: |
+          NDK="${ANDROID_NDK_LATEST_HOME:-}"
+          if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.2.12479018" >/dev/null
+            NDK="$ANDROID_HOME/ndk/27.2.12479018"
+          fi
+          echo "NDK_HOME=$NDK" >> "$GITHUB_ENV"
+
+      - run: npm install
+
+      - name: Create the Android project
+        run: |
+          npx tauri android init --ci
+          # The console needs the microphone (PTT) and to change audio routing.
+          MANIFEST=src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <application#' "$MANIFEST"
+          cat "$MANIFEST"
+
+      - name: Generate app icons
+        run: npx tauri icon src-tauri/icons/icon.png
+
+      - name: Build the APK
+        run: npx tauri android build --apk --target aarch64 armv7 x86_64 --ci
+
+      - name: Sign the APK
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          # Until a real signing key is added as repository secrets, the committed test key
+          # signs every build so each new APK installs over the last one.
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > signing.jks
+            PASS="$KEYSTORE_PASSWORD"; ALIAS="$KEY_ALIAS"
+          else
+            cp src-tauri/android/test-signing.jks signing.jks
+            PASS=repeaternation; ALIAS=radio
+          fi
+          UNSIGNED=$(find src-tauri/gen/android/app/build/outputs/apk -name '*-unsigned.apk' | head -1)
+          echo "Unsigned APK: $UNSIGNED"
+          mkdir -p out
+          "$BUILD_TOOLS/zipalign" -f -p 4 "$UNSIGNED" aligned.apk
+          "$BUILD_TOOLS/apksigner" sign --ks signing.jks --ks-pass "pass:$PASS" --ks-key-alias "$ALIAS" --out "out/Repeater-Nation-Control-$VERSION.apk" aligned.apk
+          "$BUILD_TOOLS/apksigner" verify "out/Repeater-Nation-Control-$VERSION.apk"
+          rm -f signing.jks
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repeater-nation-control-android
+          path: out/*
+          if-no-files-found: error
+
+      - name: Add the APK to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="dispatch-v$VERSION"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "Repeater Nation Dispatch v$VERSION" --notes "Android: download the .apk on your phone and open it to install. Windows: download the x64-setup.exe." || \
+            gh release view "$TAG" >/dev/null
+          gh release upload "$TAG" out/* --clobber
