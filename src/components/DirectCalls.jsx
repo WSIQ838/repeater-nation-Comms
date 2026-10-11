@@ -102,7 +102,7 @@ export default function DirectCalls() {
                 <>
                   <p>{joined.mode === "listen" ? "Listening (silent)" : joined.talking ? "TRANSMITTING" : "Joined: hold to talk"}</p>
                   {joined.mode === "talk" && (
-                    <button onPointerDown={() => talk(true)} onPointerUp={() => talk(false)} onPointerLeave={() => joined.talking && talk(false)}>Hold to talk</button>
+                    <button onPointerDown={() => talk(true)} onPointerUp={() => talk(false)} onPointerCancel={() => talk(false)} onPointerLeave={() => joined.talking && talk(false)}>Hold to talk</button>
                   )}
                   <button onClick={leave}>Leave call</button>
                 </>

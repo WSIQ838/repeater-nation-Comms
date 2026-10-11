@@ -1,0 +1,84 @@
+name: Build Repeater Nation Control for iPhone
+
+# Run by hand. Without an Apple developer account the phone build can't be signed, so this
+# proves the app builds, takes a simulator screenshot and publishes an unsigned .ipa to the
+# ios-test pre-release. Adding an account later only needs signing.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Rust for iOS
+        run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+
+      - run: npm install
+
+      - name: Create the iPhone project
+        run: |
+          npx tauri ios init --ci
+          npx tauri icon src-tauri/icons/icon.png
+          ls -la src-tauri/gen/apple
+
+      - name: Build for the iPhone simulator
+        run: npx tauri ios build --target aarch64-sim --debug --ci
+
+      - name: Screenshot in the iPhone simulator
+        continue-on-error: true
+        run: |
+          APP=$(find src-tauri/gen/apple/build -name '*.app' -path '*simulator*' | head -1)
+          [ -n "$APP" ] || APP=$(find src-tauri/gen/apple/build -name '*.app' | head -1)
+          DEVICE=$(xcrun simctl list devices available -j | node -e 'const d=JSON.parse(require("fs").readFileSync(0)).devices;for(const k of Object.keys(d).filter(k=>k.includes("iOS")).sort().reverse())for(const x of d[k])if(/^iPhone \d+( Pro)?$/.test(x.name)){console.log(x.udid);process.exit(0)}')
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" "$APP"
+          ID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          xcrun simctl launch "$DEVICE" "$ID"
+          sleep 25
+          mkdir -p out
+          xcrun simctl io "$DEVICE" screenshot out/iphone-simulator.png
+
+      - name: Build for iPhone (unsigned)
+        continue-on-error: true
+        run: |
+          PBX=$(find src-tauri/gen/apple -name project.pbxproj | head -1)
+          sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tCODE_SIGNING_ALLOWED = NO;\n\t\t\t\tCODE_SIGNING_REQUIRED = NO;\n\t\t\t\tCODE_SIGN_IDENTITY = "";/' "$PBX"
+          npx tauri ios build --target aarch64 --ci || true
+          APP=$(find src-tauri/gen/apple/build -name '*.app' -path '*iphoneos*' | head -1)
+          [ -n "$APP" ] || APP=$(find src-tauri/gen/apple/build -name '*.xcarchive' -exec find {} -name '*.app' \; | head -1)
+          echo "Device app: $APP"
+          [ -n "$APP" ] || exit 1
+          VERSION=$(node -p "require('./package.json').version")
+          rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
+          mkdir -p out && zip -qr "out/Repeater-Nation-Control-$VERSION-unsigned.ipa" Payload
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repeater-nation-control-ios
+          path: out/*
+          if-no-files-found: warn
+
+      - name: Add the iPhone files to the ios-test release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="ios-test"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --prerelease --target "$GITHUB_SHA" --title "iPhone test build" \
+              --notes "Unsigned iPhone build of the Control console. It installs only through a developer tool such as Sideloadly or AltStore until an Apple developer account is added."
+          for old in $(gh release view "$TAG" --json assets -q '.assets[].name'); do
+            gh release delete-asset "$TAG" "$old" -y
+          done
+          ls out/* >/dev/null 2>&1 && gh release upload "$TAG" out/* --clobber || echo "Nothing to upload"

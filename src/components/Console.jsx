@@ -207,7 +207,7 @@ function ChannelTile({ channel, st, cfg, color, reg, ctl, messages, tones, patch
 
   return (
     <div className={"tile " + state + (patched ? " patched" : "")} style={color ? { "--tc": color } : undefined}>
-      <button className="bolt" title={patched ? "Hold to talk on every patched channel (PTT)" : "Hold to talk (PTT)"} aria-label="Push to talk" disabled={!on} onPointerDown={() => ctl.key(channel.id, true)} onPointerUp={() => ctl.key(channel.id, false)} onPointerLeave={() => (keyed || st.busy) && ctl.key(channel.id, false)}><Bolt /><span className="pttlabel">PTT</span></button>
+      <button className="bolt" title={patched ? "Hold to talk on every patched channel (PTT)" : "Hold to talk (PTT)"} aria-label="Push to talk" disabled={!on} onPointerDown={() => ctl.key(channel.id, true)} onPointerUp={() => ctl.key(channel.id, false)} onPointerCancel={() => ctl.key(channel.id, false)} onPointerLeave={() => (keyed || st.busy) && ctl.key(channel.id, false)}><Bolt /><span className="pttlabel">PTT</span></button>
       <div className="tbody" onClick={() => !busy && (on ? A()?.turnOff() : A()?.turnOn())} title={on ? "Click to switch off" : "Click to listen"}>
         <div className="tname">{cfg.icon && cfg.icon !== "none" && <Icon id={cfg.icon} />} {name}</div>
         <div className="tsub">CH {channel.number ?? ""} · {sub}</div>
@@ -464,7 +464,7 @@ export default function Console({ selfId }) {
   return (
     <div className="axs">
       <div className="axstools">
-        <button className="gt" title="All Call: hold to talk on every channel that is on" aria-label="All Call push to talk" onPointerDown={() => general(true)} onPointerUp={() => general(false)} onPointerLeave={() => general(false)}>
+        <button className="gt" title="All Call: hold to talk on every channel that is on" aria-label="All Call push to talk" onPointerDown={() => general(true)} onPointerUp={() => general(false)} onPointerCancel={() => general(false)} onPointerLeave={() => general(false)}>
           <Bolt /><span className="gtlabel"><b>PTT</b><span>ALL CALL</span></span>
         </button>
         <div className="toolwrap">
