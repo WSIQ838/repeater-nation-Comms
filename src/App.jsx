@@ -6,6 +6,7 @@ import DirectCalls from "./components/DirectCalls";
 import MapView from "./components/MapView";
 import Settings from "./components/Settings";
 import StatusBoard from "./components/StatusBoard";
+import StreamRequests, { usePendingStreams } from "./components/StreamRequests";
 import { installUpdate, skipVersion, skippedVersion, useAutoUpdateCheck, useUpdateState } from "./lib/updates";
 
 function Clock() {
@@ -72,6 +73,7 @@ function Login({ onDone, note }) {
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = restoring
   const [tab, setTab] = useState("monitor");
+  const pendingStreams = usePendingStreams(!!session);
   const [note, setNote] = useState("");
   const { update } = useUpdateState();
 
@@ -117,8 +119,8 @@ export default function App() {
         <span className="logo" aria-hidden="true">RN</span>
         <strong className="apptitle">Repeater Nation Control Console</strong>
         <nav>
-          {["monitor", "status", "map", "calls", ...(canEditChannels(member) ? ["channels"] : []), "settings"].map((t) => (
-            <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
+          {["monitor", "status", "map", "calls", "streams", ...(canEditChannels(member) ? ["channels"] : []), "settings"].map((t) => (
+            <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t === "streams" && pendingStreams > 0 ? `streams (${pendingStreams})` : t}</button>
           ))}
         </nav>
         {update?.available && <UpdateButton update={update} />}
@@ -129,7 +131,7 @@ export default function App() {
       <main>
         {/* The console stays mounted so switching tabs never drops the channels that are on. */}
         <div hidden={tab !== "monitor"}><Console selfId={member.id} /></div>
-        {{ status: <StatusBoard selfId={member.id} />, map: <MapView />, calls: <DirectCalls />, channels: <ChannelManager />, settings: <Settings member={member} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}
+        {{ status: <StatusBoard selfId={member.id} />, map: <MapView />, calls: <DirectCalls />, streams: <StreamRequests />, channels: <ChannelManager />, settings: <Settings member={member} onSignOut={async () => { await clearSession(); setSession(null); }} /> }[tab]}
       </main>
       <UpdatePopup />
     </div>
