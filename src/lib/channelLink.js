@@ -31,7 +31,7 @@ export class ChannelLink {
     if (!this.canTransmit) throw new Error("This account has no verified callsign, so it can't transmit.");
     const r = await radioPTT(this.channel, "request", this.session.radioSessionId, this.session.radioCallsign);
     if (!r?.granted) {
-      const why = { busy: "The channel is busy.", muted: "This account is muted.", not_authorized: "Not authorized to transmit here." }[r?.reason];
+      const why = { listen_only: "This channel is listen only.", busy: "The channel is busy.", muted: "This account is muted.", not_authorized: "Not authorized to transmit here." }[r?.reason];
       throw new Error(why || r?.error || "The channel didn't grant the floor.");
     }
     this.held = true;

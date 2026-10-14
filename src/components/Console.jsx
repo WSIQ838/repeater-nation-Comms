@@ -95,6 +95,7 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
 
   const sendLink = async () => {
     if (!tx.current) { const l = new ChannelLink(channel, { listen: false }); await l.connect(); tx.current = l; }
+    if (channel.listenOnly) throw new Error("this channel is listen only.");
     if (!tx.current.canTransmit) throw new Error("this account has no verified callsign, so it can't transmit.");
     return tx.current;
   };
@@ -185,6 +186,8 @@ function ChannelEngine({ channel, startOn, reg, ctl }) {
 
   reg.current[channel.id] = {
     get isOn() { return onRef.current; },
+    get name() { return channel.name; },
+    get canKey() { return !channel.listenOnly; }, // listen-only channels carry feeds: nobody keys up on them
     turnOn, turnOff, down, release, setVolume, relayStart, relayStop,
     playMessage: (m) => playOut(`"${m.name}"`, () => playableTrack(m.blob)),
     playTone: (t) => playOut(t.name, () => playableTone(t)),
@@ -207,12 +210,12 @@ function ChannelTile({ channel, st, cfg, color, reg, ctl, messages, tones, patch
 
   return (
     <div className={"tile " + state + (patched ? " patched" : "")} style={color ? { "--tc": color } : undefined}>
-      <button className="bolt" title={patched ? "Hold to talk on every patched channel (PTT)" : "Hold to talk (PTT)"} aria-label="Push to talk" disabled={!on} onPointerDown={() => ctl.key(channel.id, true)} onPointerUp={() => ctl.key(channel.id, false)} onPointerCancel={() => ctl.key(channel.id, false)} onPointerLeave={() => (keyed || st.busy) && ctl.key(channel.id, false)}><Bolt /><span className="pttlabel">PTT</span></button>
+      <button className="bolt" title={channel.listenOnly ? "Listen only: nobody can talk on this channel" : patched ? "Hold to talk on every patched channel (PTT)" : "Hold to talk (PTT)"} aria-label="Push to talk" disabled={!on || channel.listenOnly} onPointerDown={() => ctl.key(channel.id, true)} onPointerUp={() => ctl.key(channel.id, false)} onPointerCancel={() => ctl.key(channel.id, false)} onPointerLeave={() => (keyed || st.busy) && ctl.key(channel.id, false)}><Bolt /><span className="pttlabel">PTT</span></button>
       <div className="tbody" onClick={() => !busy && (on ? A()?.turnOff() : A()?.turnOn())} title={on ? "Click to switch off" : "Click to listen"}>
         <div className="tname">{cfg.icon && cfg.icon !== "none" && <Icon id={cfg.icon} />} {name}</div>
         <div className="tsub">CH {channel.number ?? ""} · {sub}</div>
       </div>
-      <span className="tbadge">{patched && <b className="pbadge" title="Patched">PATCH</b>}{on ? `V${Math.round(volume * 10)}` : ""}</span>
+      <span className="tbadge">{channel.listenOnly && <b className="pbadge" title="Listen only">LISTEN</b>}{patched && <b className="pbadge" title="Patched">PATCH</b>}{on ? `V${Math.round(volume * 10)}` : ""}</span>
       <button className="tmenu" title="Volume, messages, tones, alert" onClick={() => setMenu(!menu)}>▾</button>
       {menu && (
         <div className="tpop">
@@ -380,7 +383,7 @@ export default function Console({ selfId }) {
       for (const other of p.ids) {
         if (other === id) continue;
         const t = reg.current[other];
-        if (!t) continue;
+        if (!t || !t.canKey) continue;
         if (on) t.relayStart(`${id}:${who}`, mediaTrack, name); else t.relayStop(`${id}:${who}`);
       }
     },
@@ -388,7 +391,8 @@ export default function Console({ selfId }) {
     key: (id, down) => {
       const p = live.current.patch;
       const ids = p.on && p.ids.length > 1 && p.ids.includes(id) ? p.ids : [id];
-      for (const x of ids) { const t = reg.current[x]; if (t && (x === id || t.isOn)) (down ? t.down() : t.release()); }
+      if (down && reg.current[id] && !reg.current[id].canKey) { setNotice(`${reg.current[id].name} is listen only.`); return; }
+      for (const x of ids) { const t = reg.current[x]; if (t && t.canKey && (x === id || t.isOn)) (down ? t.down() : t.release()); }
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
@@ -398,7 +402,8 @@ export default function Console({ selfId }) {
       const order = new Map(zones.map((z, i) => [z.id, z.display_order ?? i]));
       const list = channels.filter((c) => c.enabled !== false).map((c) => {
         const zoneName = zones.find((z) => z.id === c.zone_id)?.name || "Radio";
-        return { ...c, zoneId: c.zone_id, zoneName, label: `${zoneName} · ${c.name}`, zoneOrder: order.get(c.zone_id) ?? 999 };
+        const zone = zones.find((z) => z.id === c.zone_id);
+        return { ...c, listenOnly: c.listen_only === true || zone?.listen_only === true, zoneId: c.zone_id, zoneName, label: `${zoneName} · ${c.name}`, zoneOrder: order.get(c.zone_id) ?? 999 };
       }).sort((a, b) => a.zoneOrder - b.zoneOrder || (a.number ?? 0) - (b.number ?? 0));
       setChannels(list);
       const seen = [];
@@ -416,10 +421,10 @@ export default function Console({ selfId }) {
 
   const folders = layout.mode === "custom" ? layout.folders : zoneFolders(zones, layout);
   const onCount = channels.filter((c) => states[c.id]?.on).length;
-  const general = (down) => { for (const t of Object.values(reg.current)) if (t.isOn) (down ? t.down() : t.release()); };
+  const general = (down) => { for (const t of Object.values(reg.current)) if (t.isOn && t.canKey) (down ? t.down() : t.release()); };
   const sendToneNow = (t) => {
-    const ids = channels.filter((c) => states[c.id]?.on).map((c) => c.id);
-    if (!ids.length) { setNotice("Switch a channel on first, then send the tone."); return; }
+    const ids = channels.filter((c) => states[c.id]?.on && !c.listenOnly).map((c) => c.id);
+    if (!ids.length) { setNotice("Switch a channel on first (listen-only channels can't send), then send the tone."); return; }
     ids.forEach((id) => reg.current[id]?.playTone(t));
   };
   const sendTone = () => { const t = tones.find((x) => x.id === toneId); if (!t) return; sendToneNow(t); setToneMenu(false); };
@@ -436,7 +441,7 @@ export default function Console({ selfId }) {
       case "tone": { const t = tones[(Number(m.index) || 1) - 1]; if (m.pressed && t) sendToneNow(t); break; }
       case "message": {
         const msg = messages[(Number(m.index) || 1) - 1];
-        if (m.pressed && msg) for (const c of channels) if (states[c.id]?.on) reg.current[c.id]?.playMessage(msg);
+        if (m.pressed && msg) for (const c of channels) if (states[c.id]?.on && !c.listenOnly) reg.current[c.id]?.playMessage(msg);
         break;
       }
       case "alerts": if (m.pressed) setLayout({ ...layout, alertsOn: layout.alertsOn === false }); break;

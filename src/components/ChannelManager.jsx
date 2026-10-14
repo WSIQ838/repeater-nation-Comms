@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { listZonesAndChannels, createZone, updateZone, deleteZone, createChannel, updateChannel, deleteChannel } from "../lib/auth";
+import { listZonesAndChannels, createZone, updateZone, deleteZone, createChannel, updateChannel, deleteChannel, radioFeedToken } from "../lib/auth";
 
 const byOrder = (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0);
 const byNumber = (a, b) => (a.number ?? 0) - (b.number ?? 0);
@@ -9,6 +9,7 @@ export default function ChannelManager() {
   const [error, setError] = useState("");
   const [zoneName, setZoneName] = useState("");
   const [chan, setChan] = useState({ name: "", number: "", zone_id: "" });
+  const [feed, setFeed] = useState(null); // { channelId, loading, token, url, roomName, label, expiresInHours, error }
   const [edit, setEdit] = useState(null); // { kind: "zone"|"channel", id, name, number, zone_id }
 
   const load = useCallback(() => listZonesAndChannels().then(setData).catch((e) => setError(e?.message || "Could not load.")), []);
@@ -17,6 +18,11 @@ export default function ChannelManager() {
   const run = async (fn) => { setError(""); try { await fn(); await load(); } catch (e) { setError(e?.message || "Not allowed."); } };
 
   const zones = [...data.zones].sort(byOrder);
+  const getFeed = async (c) => {
+    setFeed({ channelId: c.id, loading: true });
+    try { const r = await radioFeedToken(c.id, c.name); setFeed({ channelId: c.id, ...r }); }
+    catch (e) { setFeed({ channelId: c.id, error: e?.message || "Could not make a feed connection." }); }
+  };
   const moveZone = (i, d) => run(async () => {
     const a = zones[i], b = zones[i + d];
     if (!a || !b) return;
@@ -52,10 +58,11 @@ export default function ChannelManager() {
               </>
             ) : (
               <>
-                <span>{z.name}{z.enabled === false && " (disabled)"}</span>
+                <span>{z.name}{z.enabled === false && " (disabled)"}{z.listen_only === true && " · listen only"}</span>
                 <button disabled={i === 0} onClick={() => moveZone(i, -1)}>↑</button>
                 <button disabled={i === zones.length - 1} onClick={() => moveZone(i, 1)}>↓</button>
                 <button onClick={() => setEdit({ kind: "zone", id: z.id, name: z.name })}>Edit</button>
+                <button title="Nobody can talk on any channel in a listen-only zone (audio feeds)" onClick={() => run(() => updateZone(z.id, { listen_only: z.listen_only !== true }))}>{z.listen_only === true ? "Allow talking" : "Listen only"}</button>
                 <button onClick={() => run(() => updateZone(z.id, { enabled: z.enabled === false }))}>{z.enabled === false ? "Enable" : "Disable"}</button>
                 <button onClick={() => {
                   const n = data.channels.filter((c) => c.zone_id === z.id).length;
@@ -90,14 +97,33 @@ export default function ChannelManager() {
               </>
             ) : (
               <>
-                <span>{c.number} · {c.name} <em>({zones.find((z) => z.id === c.zone_id)?.name || "no zone"})</em>{!c.enabled && " (disabled)"}</span>
+                <span>{c.number} · {c.name} <em>({zones.find((z) => z.id === c.zone_id)?.name || "no zone"})</em>{!c.enabled && " (disabled)"}{c.listen_only === true && " · listen only"}{zones.find((z) => z.id === c.zone_id)?.listen_only === true && " · zone is listen only"}</span>
                 <button onClick={() => setEdit({ kind: "channel", id: c.id, name: c.name, number: String(c.number ?? ""), zone_id: c.zone_id })}>Edit</button>
+                <button title="Nobody can talk on a listen-only channel (audio feeds)" onClick={() => run(() => updateChannel(c.id, { listen_only: c.listen_only !== true }))}>{c.listen_only === true ? "Allow talking" : "Listen only"}</button>
+                {(c.listen_only === true || zones.find((z) => z.id === c.zone_id)?.listen_only === true) && <button title="Connection details for an audio feed into this channel" onClick={() => getFeed(c)}>Feed</button>}
                 <button onClick={() => run(() => updateChannel(c.id, { enabled: !c.enabled }))}>{c.enabled ? "Disable" : "Enable"}</button>
                 <button onClick={() => confirm(`Delete channel "${c.name}"?`) && run(() => deleteChannel(c.id))}>Remove</button>
               </>
             )}
           </li>
         ))}</ul>
+        {feed && (
+          <div className="feedbox">
+            <h3>Audio feed · {data.channels.find((c) => c.id === feed.channelId)?.name}</h3>
+            {feed.loading && <p>Making a feed connection…</p>}
+            {feed.error && <p className="err">{feed.error}</p>}
+            {feed.token && (
+              <>
+                <p>A feed publisher joins this room and publishes audio; everyone listening on the channel hears it. The token works for {feed.expiresInHours} hours and is secret: anyone holding it can put audio on this channel.</p>
+                <label>Server<input readOnly value={feed.url} onFocus={(e) => e.target.select()} /></label>
+                <label>Room<input readOnly value={feed.roomName} onFocus={(e) => e.target.select()} /></label>
+                <label>Token<textarea readOnly rows="4" value={feed.token} onFocus={(e) => e.target.select()} /></label>
+                <button onClick={() => navigator.clipboard?.writeText(feed.token)}>Copy token</button>
+              </>
+            )}
+            <button onClick={() => setFeed(null)}>Close</button>
+          </div>
+        )}
       </section>
     </div>
   );

@@ -174,3 +174,6 @@ export const dispatchMove = (identity, fromChannelId, toChannelId) =>
 // Dispatcher-only text chat (backend: dispatch-chat).
 export const chatPoll = (since) => invoke("dispatch-chat", { action: "poll", since: since || "" });
 export const chatSend = (text) => invoke("dispatch-chat", { action: "send", text });
+
+// Admin only: a token that lets one audio feed publisher join a listen-only channel (backend: radio-feed).
+export const radioFeedToken = (channelId, label) => invoke("radio-feed", { action: "token", channel_id: channelId, label: label || "" });
