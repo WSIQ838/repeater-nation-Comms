@@ -177,3 +177,8 @@ export const chatSend = (text) => invoke("dispatch-chat", { action: "send", text
 
 // Admin only: a token that lets one audio feed publisher join a listen-only channel (backend: radio-feed).
 export const radioFeedToken = (channelId, label) => invoke("radio-feed", { action: "token", channel_id: channelId, label: label || "" });
+
+// Stream channel requests: a member asks for one, control approves it into a zone (backend: radio-feed).
+export const feedPending = () => invoke("radio-feed", { action: "pending" });
+export const feedApprove = (requestId, zoneId, name) => invoke("radio-feed", { action: "approve", request_id: requestId, zone_id: zoneId, name: name || "" });
+export const feedReject = (requestId, reason) => invoke("radio-feed", { action: "reject", request_id: requestId, reason: reason || "" });
