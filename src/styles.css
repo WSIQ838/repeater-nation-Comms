@@ -223,3 +223,5 @@ body{-webkit-text-size-adjust:100%}
   input,select,textarea{font-size:16px}
   .login{margin:6vh 12px;max-width:none}
 }
+.feedbox{margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;gap:6px}
+.feedbox h3{margin:0}.feedbox label{display:flex;flex-direction:column;font-size:12px;gap:2px}.feedbox textarea{width:100%;font-family:monospace;font-size:11px}
