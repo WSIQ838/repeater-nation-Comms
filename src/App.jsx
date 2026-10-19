@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { restoreSession, restoreSessionFromRedirect, restoreSessionFromLink, loginWithPassword, loginWithGoogle, googleSignInAvailable, clearSession, isDispatcher, canEditChannels } from "./lib/auth";
 import ChannelManager from "./components/ChannelManager";
 import Console from "./components/Console";
@@ -50,7 +50,13 @@ function Login({ onDone, note }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const shown = error || note;
+  const [progress, setProgress] = useState("");
+  useEffect(() => {
+    const on = (e) => { setProgress(e.detail?.message || ""); if (e.detail?.error) setError(e.detail.message); };
+    window.addEventListener("rn-auth-status", on);
+    return () => window.removeEventListener("rn-auth-status", on);
+  }, []);
+  const shown = error || note || progress;
   const submit = async (ev) => {
     ev.preventDefault();
     setBusy(true); setError("");
@@ -65,7 +71,7 @@ function Login({ onDone, note }) {
       <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
       <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
       {googleSignInAvailable() && <button type="button" onClick={() => loginWithGoogle().catch((err) => setError(err?.message || "Could not open the browser."))}>Sign in with Google</button>}
-      {shown && <p className="err">{shown}</p>}
+      {shown && <p className={error || note ? "err" : "muted"}>{shown}</p>}
     </form>
   );
 }
@@ -77,7 +83,25 @@ export default function App() {
   const [note, setNote] = useState("");
   const { update } = useUpdateState();
 
-  useEffect(() => { restoreSessionFromRedirect().then((r) => r || restoreSession()).then(setSession); }, []);
+  const [offline, setOffline] = useState(false);
+  const boot = useCallback(async () => {
+    const r = (await restoreSessionFromRedirect()) || (await restoreSession());
+    if (r?.offline) { setOffline(true); return false; }
+    setOffline(false); setSession(r); return true;
+  }, []);
+  // Saved sign-in, with the server unreachable: keep it and try again until it answers.
+  useEffect(() => {
+    let stop = false, timer;
+    const run = async () => { const ok = await boot(); if (!ok && !stop) timer = setTimeout(run, 10000); };
+    run();
+    return () => { stop = true; clearTimeout(timer); };
+  }, [boot]);
+  // A server function refused the sign-in (it lapsed or was ended elsewhere): back to the login screen.
+  useEffect(() => {
+    const expired = async () => { await clearSession(); setSession(null); setNote("Your sign-in expired. Sign in again."); };
+    window.addEventListener("rn-auth-expired", expired);
+    return () => window.removeEventListener("rn-auth-expired", expired);
+  }, []);
 
   // Look for a newer release when the console opens and then on the schedule picked in Settings.
   useAutoUpdateCheck();
@@ -99,6 +123,7 @@ export default function App() {
     return () => { gone = true; off?.(); };
   }, []);
 
+  if (offline) return <div className="center"><p>Can't reach Repeater Nation. Trying again…</p><button onClick={boot}>Try now</button></div>;
   if (session === undefined) return <p className="center">Loading…</p>;
   if (!session) return <Login onDone={setSession} note={note} />;
 

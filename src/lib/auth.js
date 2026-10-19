@@ -29,18 +29,36 @@ export function isDispatcher(member) {
 // Creating and editing channels and zones stays with admins; the server rules only let them write those.
 export const canEditChannels = (member) => ["admin", "super_admin"].includes(String(member?.role || "").toLowerCase());
 
+// The sign-in saved by the last sign-in on this computer or phone, so people stay signed in between launches.
+const TOKEN_KEYS = [TOKEN_KEY, "token"];
+function savedToken() {
+  try { for (const k of TOKEN_KEYS) { const v = localStorage.getItem(k); if (v) return v; } } catch { /* storage unavailable */ }
+  return "";
+}
+
+// Sign-in progress for the login screen, so a failed browser hand-off says where it stopped.
+export function reportAuthStatus(message, error = false) {
+  console[error ? "error" : "info"]("[auth]", message);
+  window.dispatchEvent(new CustomEvent("rn-auth-status", { detail: { message, error } }));
+}
+
+// { member } when the saved sign-in still works, null when there is none or the server refused it, and
+// { offline: true } when the server couldn't be reached (the saved sign-in is kept so it can be tried again).
 export async function restoreSession() {
-  let token = "";
-  try { token = localStorage.getItem(TOKEN_KEY) || ""; } catch { /* storage unavailable */ }
+  const token = savedToken();
   if (!token) return null;
   try {
     client().auth.setToken(token);
-    const member = await client().auth.me();
+    let timer;
+    const member = await Promise.race([
+      client().auth.me(),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), 15000); }),
+    ]).finally(() => clearTimeout(timer));
     return member ? { member } : null;
   } catch (err) {
     const status = err?.status ?? err?.response?.status;
-    if (status === 401 || status === 403) await clearSession();
-    return null;
+    if (status === 401 || status === 403) { await clearSession(); return null; }
+    return { offline: true };
   }
 }
 
@@ -56,6 +74,7 @@ export async function loginWithGoogle() {
   if (inDesktopApp()) {
     const { openUrl } = await import("@tauri-apps/plugin-opener");
     await openUrl(login(`${config.appUrl}/oauth/dispatch-callback`));
+    reportAuthStatus("Google sign-in opened in your browser. Finish there, then allow it to open Repeater Nation Control.");
     return;
   }
   window.location.href = login(window.location.origin + window.location.pathname);
@@ -103,16 +122,44 @@ export async function clearSession() {
   base44Client = null;
 }
 
-async function invoke(name, payload) {
+// Neither the Base44 SDK nor axios time out on their own, so a request sent on a dead connection
+// (after sleep or a Wi-Fi change) could otherwise wait for minutes.
+const INVOKE_TIMEOUT_MS = 20000;
+
+// A 401 from a server function can be a lapsed sign-in or a passing hiccup. Check once with the account call;
+// only a refused sign-in there sends the app back to the login screen (the app listens for "rn-auth-expired").
+let authCheck = null;
+function checkSignIn() {
+  if (authCheck || !base44Client) return;
+  authCheck = (async () => {
+    let timer;
+    try {
+      await Promise.race([client().auth.me(), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), 10000); })]);
+    } catch (err) {
+      const status = err?.status ?? err?.response?.status;
+      if (status === 401 || status === 403) window.dispatchEvent(new CustomEvent("rn-auth-expired"));
+    } finally { clearTimeout(timer); setTimeout(() => { authCheck = null; }, 30000); }
+  })();
+}
+
+async function invoke(name, payload, timeoutMs = INVOKE_TIMEOUT_MS) {
+  let timer;
   try {
-    const result = await client().functions.invoke(name, payload);
+    const result = await Promise.race([
+      client().functions.invoke(name, payload),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error("Repeater Nation is not responding. Try again in a moment."), { timedOut: true })), timeoutMs); }),
+    ]);
     return result?.data || result;
   } catch (err) {
+    if (err?.timedOut) throw err;
+    const status = err?.response?.status ?? err?.status;
+    if (status === 401) checkSignIn();
     const data = err?.response?.data || err?.data;
     const detail = data?.error || data?.message || data?.detail;
-    if (detail) throw Object.assign(new Error(String(detail)), { status: err?.response?.status ?? err?.status });
+    if (detail) throw Object.assign(new Error(String(detail)), { status });
+    if (!err?.response && /network error/i.test(err?.message || "")) throw Object.assign(new Error("Can't reach Repeater Nation. Check the internet connection."), { network: true });
     throw err;
-  }
+  } finally { clearTimeout(timer); }
 }
 
 // Direct calls. The radio app's "list" and "token" actions only cover a member's own calls;
