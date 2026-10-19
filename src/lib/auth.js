@@ -50,12 +50,16 @@ export const googleSignInAvailable = () => true;
 // Google refuses sign-in inside an embedded window, so the desktop app opens the system browser
 // and the website hands the result back through a repeaternation-dispatch:// link (its own link
 // type, so the radio app is never opened by mistake). The web build just redirects.
-export async function loginWithGoogle() {
+export async function loginInBrowser() {
   const base = config.base44AppBaseUrl;
   const login = (from) => `${base}/api/apps/auth/login?app_id=${encodeURIComponent(config.base44AppId)}&from_url=${encodeURIComponent(from)}`;
   if (inDesktopApp()) {
+    // The website's own sign-in page, so every way it offers works here too: Google,
+    // Apple, Microsoft, Facebook, email and password, and the emailed code for an
+    // unverified email. Afterwards it goes to /oauth/dispatch-callback, which hands
+    // the token to the console through repeaternation-dispatch://.
     const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(login(`${config.appUrl}/oauth/dispatch-callback`));
+    await openUrl(`${config.appUrl}/login?returnTo=${encodeURIComponent("/oauth/dispatch-callback")}`);
     return;
   }
   window.location.href = login(window.location.origin + window.location.pathname);
