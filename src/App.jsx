@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { restoreSession, restoreSessionFromRedirect, restoreSessionFromLink, loginWithPassword, loginWithGoogle, googleSignInAvailable, clearSession, isDispatcher, canEditChannels } from "./lib/auth";
+import { restoreSession, restoreSessionFromRedirect, restoreSessionFromLink, loginWithPassword, loginInBrowser, googleSignInAvailable, clearSession, isDispatcher, canEditChannels } from "./lib/auth";
 import ChannelManager from "./components/ChannelManager";
 import Console from "./components/Console";
 import DirectCalls from "./components/DirectCalls";
@@ -64,7 +64,7 @@ function Login({ onDone, note }) {
       <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
       <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
       <button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-      {googleSignInAvailable() && <button type="button" onClick={() => loginWithGoogle().catch((err) => setError(err?.message || "Could not open the browser."))}>Sign in with Google</button>}
+      {googleSignInAvailable() && <button type="button" className="browserlogin" onClick={() => loginInBrowser().catch((err) => setError(err?.message || "Could not open the browser."))}><b>Sign in with your browser</b><small>Google, Apple, Microsoft, Facebook or email</small></button>}
       {shown && <p className="err">{shown}</p>}
     </form>
   );
